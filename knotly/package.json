@@ -9,7 +9,8 @@
     "lint": "eslint",
     "migrate": "supabase db push",
     "reset": "supabase db reset --linked && pnpm seed",
-    "types": "supabase gen types typescript --linked > src/lib/supabase/types.ts"
+    "types": "supabase gen types typescript --linked > src/lib/supabase/types.ts",
+    "seed": "tsx --env-file=.env.local scripts/seed.mts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.65",
