@@ -1,12 +1,15 @@
 {
-  "name": "-knotly",
+  "name": "knotly",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "migrate": "supabase db push",
+    "reset": "supabase db reset --linked && pnpm seed",
+    "types": "supabase gen types typescript --linked > src/lib/supabase/types.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.65",
