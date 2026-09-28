@@ -1,5 +1,8 @@
 // scripts/seed.mts  (.mts = ES module, so top-level await works)
 import { createClient } from "@supabase/supabase-js";
+import { embed } from "ai";
+import { openai } from "@ai-sdk/openai";
+const model = openai.textEmbeddingModel("text-embedding-3-small");
 
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -137,15 +140,23 @@ for (const v of vendors) {
   await sb
     .from("vendor_packages")
     .insert(v.packages.map((p) => ({ ...p, vendor_id: id })));
-  await sb
-    .from("testimonials")
-    .insert([
-      {
-        vendor_id: id,
-        author_name: "Kayla M.",
-        rating: 5,
-        body: `${v.name} made our day so easy. Highly recommend!`,
-      },
-    ]);
+  await sb.from("testimonials").insert([
+    {
+      vendor_id: id,
+      author_name: "Kayla M.",
+      rating: 5,
+      body: `${v.name} made our day so easy. Highly recommend!`,
+    },
+  ]);
+
+  // inside the loop, after inserting testimonials:
+  const doc =
+    `${v.name}: ${v.category}. ${v.bio} ` +
+    v.packages
+      .map((p) => `${p.name} $${p.price}: ${p.inclusions.join(", ")}`)
+      .join(". ");
+  const { embedding } = await embed({ model, value: doc });
+  await sb.from("vendors").update({ embedding }).eq("id", id);
+
   console.log("✓", v.name);
 }
