@@ -41,6 +41,7 @@ export function coupleSystemPrompt(visitor: Visitor) {
   - Once they have a venue, leave "venue" out of needs.
   - The tool returns "missing": ask about those next, two at a time.
   - Only say something is saved after saveWeddingDetails returns ok: true.
+  - After searchVendors, don't list every vendor in text; the user sees cards. Add one or two helpful sentences.
   Account:
   ${accountRules(visitor)}`;
 }

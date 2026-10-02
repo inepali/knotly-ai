@@ -5,25 +5,36 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import AccountCard, { HAS_ACCOUNT_KEY } from "./cards/AccountCard";
+import VendorListCard from "./cards/VendorListCard";
 
-type Action = { label: string; guestOnly?: boolean } & ({ href: string } | { prompt: string });
+type Action = { label: string; guestOnly?: boolean } & (
+  | { href: string }
+  | { prompt: string }
+);
 
 // Pills under the composer: links go to a page, prompts start a conversation.
-const actions: Action[] =
-  [
-    { label: "Register", prompt: "I'd like to create an account.", guestOnly: true },
-    { label: "Sign in", prompt: "I already have an account. Please sign me in.", guestOnly: true },
-    { label: "Vendor Listing", href: "/vendors" },
-    { label: "Search Vendors", href: "/search" },
-    {
-      label: "Plan my budget",
-      prompt: "Help me plan a budget for my wedding.",
-    },
-    {
-      label: "Find a photographer",
-      prompt: "Find me a wedding photographer near Charlotte.",
-    },
-  ];
+const actions: Action[] = [
+  {
+    label: "Register",
+    prompt: "I'd like to create an account.",
+    guestOnly: true,
+  },
+  {
+    label: "Sign in",
+    prompt: "I already have an account. Please sign me in.",
+    guestOnly: true,
+  },
+  { label: "Vendor Listing", href: "/vendors" },
+  { label: "Search Vendors", href: "/search" },
+  {
+    label: "Plan my budget",
+    prompt: "Help me plan a budget for my wedding.",
+  },
+  {
+    label: "Find a photographer",
+    prompt: "Find me a wedding photographer near Charlotte.",
+  },
+];
 
 const pill =
   "rounded-full border border-gray-300 px-5 py-2.5 text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-900";
@@ -41,7 +52,9 @@ export default function Chat() {
   async function loadAccount() {
     const { data } = await supabaseBrowser().auth.getUser();
     const u = data.user;
-    setAccount(u && !u.is_anonymous ? u.email || u.phone || "your account" : null);
+    setAccount(
+      u && !u.is_anonymous ? u.email || u.phone || "your account" : null
+    );
   }
 
   // Every visitor gets a session so chats can be tied to a profile; guests upgrade later.
@@ -140,22 +153,24 @@ export default function Chat() {
           </h1>
           {composer}
           <div className="mt-6 flex flex-wrap justify-center gap-3">
-            {actions.filter((a) => !(a.guestOnly && account)).map((a) =>
-              "href" in a ? (
-                <Link key={a.label} href={a.href} className={pill}>
-                  {a.label}
-                </Link>
-              ) : (
-                <button
-                  key={a.label}
-                  type="button"
-                  onClick={() => send(a.prompt)}
-                  className={pill}
-                >
-                  {a.label}
-                </button>
-              )
-            )}
+            {actions
+              .filter((a) => !(a.guestOnly && account))
+              .map((a) =>
+                "href" in a ? (
+                  <Link key={a.label} href={a.href} className={pill}>
+                    {a.label}
+                  </Link>
+                ) : (
+                  <button
+                    key={a.label}
+                    type="button"
+                    onClick={() => send(a.prompt)}
+                    className={pill}
+                  >
+                    {a.label}
+                  </button>
+                )
+              )}
           </div>
         </div>
       </main>
@@ -169,6 +184,20 @@ export default function Chat() {
         {messages.map((m) => (
           <div key={m.id} className={m.role === "user" ? "text-right" : ""}>
             {m.parts.map((part, i) => {
+              if (part.type === "tool-searchVendors") {
+                return part.state === "output-available" ? (
+                  <VendorListCard
+                    key={i}
+                    data={part.output as any}
+                    onAsk={(t) => sendMessage({ text: t })}
+                  />
+                ) : (
+                  <p key={i} className="text-sm text-gray-400">
+                    Searching vendors…
+                  </p>
+                );
+              }
+
               if (part.type === "text") {
                 return (
                   <p
@@ -183,10 +212,14 @@ export default function Chat() {
               }
 
               if (
-                (part.type === "tool-requestSignUp" || part.type === "tool-requestSignIn") &&
+                (part.type === "tool-requestSignUp" ||
+                  part.type === "tool-requestSignIn") &&
                 part.state === "output-available"
               ) {
-                const out = part.output as { show?: "signup" | "signin"; reason?: string };
+                const out = part.output as {
+                  show?: "signup" | "signin";
+                  reason?: string;
+                };
                 if (!out.show) return null; // already signed in
                 return (
                   <AccountCard
