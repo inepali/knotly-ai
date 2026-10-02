@@ -1,21 +1,12 @@
 // src/components/inbox/MailShell.tsx — header + folder list shared by the inbox pages.
 import Link from "next/link";
 import type { ReactNode } from "react";
-import type { Folder, MailItem } from "@/lib/mailbox";
+import type { MailView } from "@/lib/mail-threads";
 
-const FOLDERS: { key: Folder; label: string }[] = [
-  { key: "inbox", label: "Inbox" },
-  { key: "sent", label: "Sent" },
+const FOLDERS: { key: MailView; label: string }[] = [
+  { key: "messages", label: "Messages" },
   { key: "drafts", label: "Drafts" },
 ];
-
-export function folderCounts(items: MailItem[]) {
-  return {
-    inbox: items.filter((i) => i.isNew).length, // unread, like an email client
-    sent: items.filter((i) => i.folder === "sent").length,
-    drafts: items.filter((i) => i.folder === "drafts").length,
-  } satisfies Record<Folder, number>;
-}
 
 export default function MailShell({
   active,
@@ -23,8 +14,8 @@ export default function MailShell({
   showDrafts,
   children,
 }: {
-  active?: Folder;
-  counts: Record<Folder, number>;
+  active?: MailView;
+  counts: Record<MailView, number>;
   showDrafts: boolean; // vendors never have drafts
   children: ReactNode;
 }) {
@@ -53,7 +44,7 @@ export default function MailShell({
               {counts[f.key] > 0 && (
                 <span
                   className={`rounded-full px-2 text-xs ${
-                    f.key === "inbox" ? "bg-black text-white dark:bg-white dark:text-black" : "text-gray-500"
+                    f.key === "messages" ? "bg-black text-white dark:bg-white dark:text-black" : "text-gray-500"
                   }`}
                 >
                   {counts[f.key]}

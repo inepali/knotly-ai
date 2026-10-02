@@ -9,16 +9,21 @@ import VendorDetailsCard from "./cards/VendorDetailsCard";
 import InquiryDraftsCard from "./cards/InquiryDraftsCard";
 import WeddingCard from "./cards/WeddingCard";
 import BusinessCard from "./cards/BusinessCard";
+import InboxPane from "../inbox/InboxPane";
 
-export type Tab = "vendors" | "drafts" | "wedding" | "business";
+export type Tab = "inbox" | "vendors" | "drafts" | "wedding" | "business";
+
+// The Inbox tab isn't a tool result; it's always there for signed-in users.
+export const INBOX = "inbox";
 
 const TAB_LABELS: Record<Tab, string> = {
+  inbox: "Messages",
   wedding: "My wedding",
   vendors: "Vendors",
   drafts: "Drafts",
   business: "My business",
 };
-const TAB_ORDER: Tab[] = ["wedding", "vendors", "drafts", "business"];
+const TAB_ORDER: Tab[] = ["inbox", "wedding", "vendors", "drafts", "business"];
 
 // Loose view of a tool output; each card narrows it to what it needs.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -115,24 +120,32 @@ export function WorkspacePanel({
   activeId,
   onSelect,
   onAsk,
+  showInbox,
+  unread,
+  onInboxChange,
 }: {
   artifacts: Artifact[];
-  activeId: string | undefined;
+  activeId: string | undefined; // an artifact id, or INBOX
   onSelect: (id: string) => void;
   onAsk: (text: string) => void;
+  showInbox: boolean; // signed-in users only; guests have no mailbox
+  unread: number;
+  onInboxChange: () => void;
 }) {
-  const active = artifacts.find((a) => a.id === activeId);
-  if (!active)
+  const inboxActive = showInbox && activeId === INBOX;
+  const active = inboxActive ? undefined : artifacts.find((a) => a.id === activeId);
+  if (!active && !inboxActive)
     return (
       <div className="flex h-full items-center justify-center p-8 text-center text-sm text-gray-500">
         Search results, drafts and your plan will show up here as we chat.
       </div>
     );
 
-  const tabs = TAB_ORDER.filter((t) => artifacts.some((a) => a.tab === t));
-  const latestIn = (t: Tab) => artifacts.findLast((a) => a.tab === t)!;
-  const earlier = artifacts.filter((a) => a.tab === active.tab && a.id !== active.id).reverse();
-  const entry = PANEL_TOOLS[active.tool];
+  const activeTab: Tab = inboxActive ? "inbox" : active!.tab;
+  const tabs = TAB_ORDER.filter((t) => (t === "inbox" ? showInbox : artifacts.some((a) => a.tab === t)));
+  const latestIn = (t: Tab) => (t === "inbox" ? INBOX : artifacts.findLast((a) => a.tab === t)!.id);
+  const earlier = active ? artifacts.filter((a) => a.tab === active.tab && a.id !== active.id).reverse() : [];
+  const entry = active && PANEL_TOOLS[active.tool];
 
   return (
     <div className="flex h-full flex-col">
@@ -141,22 +154,31 @@ export function WorkspacePanel({
           <button
             key={t}
             type="button"
-            onClick={() => onSelect(latestIn(t).id)}
-            aria-current={t === active.tab ? "page" : undefined}
+            onClick={() => onSelect(latestIn(t))}
+            aria-current={t === activeTab ? "page" : undefined}
             className={`-mb-px border-b-2 px-3 py-2 text-sm ${
-              t === active.tab
+              t === activeTab
                 ? "border-black font-medium dark:border-white"
                 : "border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
             }`}
           >
             {TAB_LABELS[t]}
+            {t === "inbox" && unread > 0 && (
+              <span className="ml-1 rounded-full bg-black px-1.5 text-xs text-white dark:bg-white dark:text-black">{unread}</span>
+            )}
           </button>
         ))}
       </nav>
 
       <section className="flex-1 overflow-y-auto p-4" aria-live="polite">
-        <h2 className="mb-3 font-semibold">{entry.summary(active.output)}</h2>
-        {entry.render(active.output, onAsk)}
+        {inboxActive ? (
+          <InboxPane onChange={onInboxChange} />
+        ) : (
+          <>
+            <h2 className="mb-3 font-semibold">{entry!.summary(active!.output)}</h2>
+            {entry!.render(active!.output, onAsk)}
+          </>
+        )}
 
         {earlier.length > 0 && (
           <div className="mt-8 border-t border-gray-200 pt-4 dark:border-gray-800">

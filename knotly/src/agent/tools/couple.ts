@@ -3,6 +3,8 @@ import { tool } from "ai";
 import { z } from "zod";
 import { Category, resolveMetro, type ToolCtx } from "../shared";
 import { embedText } from "@/lib/embeddings";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { accountTools } from "./account";
 
 export function coupleTools({ sb, userId, isGuest }: ToolCtx) {
   async function getProject() {
@@ -195,31 +197,29 @@ export function coupleTools({ sb, userId, isGuest }: ToolCtx) {
       execute: async () => (await getProject()) ?? { empty: true },
     }),
 
-    requestSignUp: tool({
+    // Guest says they run a wedding business: hand the chat to the vendor agent.
+    switchToVendor: tool({
       description:
-        "Show the create-account card (email or phone + password) to a GUEST. Call after a few messages, before contacting vendors, or right away for a wedding vendor.",
-      inputSchema: z.object({
-        reason: z.string().describe("One short sentence shown on the card"),
-        role: z
-          .enum(["couple", "vendor"])
-          .optional()
-          .describe('"vendor" if they run a wedding business; otherwise leave out'),
-      }),
-      execute: async ({ reason, role }) =>
-        isGuest
-          ? { show: "signup", reason, role: role ?? "couple" }
-          : { alreadySignedIn: true },
+        "Hand a GUEST who runs a wedding business (and wants to be listed) to vendor onboarding. Their next message is answered by the vendor assistant.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        if (!isGuest)
+          return {
+            ok: false,
+            error:
+              "This account is a couple account. A vendor listing needs its own vendor account: sign out, then create one and choose 'Wedding vendor'.",
+          };
+        // role isn't user-editable (column grants), so the server sets it.
+        const { error } = await supabaseAdmin
+          .from("profiles")
+          .update({ role: "vendor" })
+          .eq("id", userId)
+          .eq("role", "couple");
+        return error ? { ok: false, error: error.message } : { ok: true, switched: "vendor" };
+      },
     }),
 
-    requestSignIn: tool({
-      description:
-        "Show the sign-in card to a GUEST who already has an account (they say so, or this browser signed in before).",
-      inputSchema: z.object({
-        reason: z.string().describe("One short sentence shown on the card"),
-      }),
-      execute: async ({ reason }) =>
-        isGuest ? { show: "signin", reason } : { alreadySignedIn: true },
-    }),
+    ...accountTools({ sb, userId, isGuest }, "couple"),
 
     saveWeddingDetails: tool({
       description:

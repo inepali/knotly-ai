@@ -13,6 +13,23 @@ import { vendorTools } from "@/agent/tools/vendor";
 
 export const maxDuration = 60;
 
+// After a handoff (couple agent → vendor agent), the history holds calls to tools the
+// new agent doesn't have. Keep the conversation text but drop those calls, so the
+// model never sees tools it can't use.
+function forAgent(messages: UIMessage[], tools: object): UIMessage[] {
+  const known = new Set(Object.keys(tools));
+  return messages
+    .map((m) => ({
+      ...m,
+      parts: m.parts.filter((p) => {
+        if (p.type === "dynamic-tool") return known.has(p.toolName);
+        if (p.type.startsWith("tool-")) return known.has(p.type.slice("tool-".length));
+        return true;
+      }),
+    }))
+    .filter((m) => m.parts.length > 0);
+}
+
 export async function POST(req: Request) {
   const {
     messages,
@@ -35,18 +52,19 @@ export async function POST(req: Request) {
     .single();
   const isVendor = profile?.role === "vendor";
   const ctx = { sb, userId: user.id, isGuest };
+  const tools = isVendor ? vendorTools(ctx) : coupleTools(ctx); // different hands per role
 
   const result = streamText({
     model: chatModel,
     system: isVendor
-      ? vendorSystemPrompt()
+      ? vendorSystemPrompt({ isGuest })
       : coupleSystemPrompt({
           isGuest,
           returning: isGuest && returning === true,
           userTurns: messages.filter((m) => m.role === "user").length,
         }),
-    messages: await convertToModelMessages(messages),
-    tools: isVendor ? vendorTools(ctx) : coupleTools(ctx), // different hands per role
+    messages: await convertToModelMessages(forAgent(messages, tools)),
+    tools,
     stopWhen: stepCountIs(6),
   });
 

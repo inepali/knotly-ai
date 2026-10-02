@@ -2,7 +2,8 @@
 import { notFound, redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getViewer, isMine, loadMailbox, loadThread } from "@/lib/mailbox";
-import MailShell, { folderCounts } from "@/components/inbox/MailShell";
+import MailShell from "@/components/inbox/MailShell";
+import { mailCounts } from "@/lib/mail-threads";
 import { MarkRead, ReplyBox, SendDraftButton } from "@/components/inbox/ThreadActions";
 
 const AGENT = new Set(["couple_agent", "vendor_agent"]);
@@ -24,7 +25,7 @@ export default async function ThreadPage(props: PageProps<"/inbox/[threadId]">) 
   const subject = messages.find((m) => m.status === "sent")?.subject ?? messages[0].subject;
 
   return (
-    <MailShell counts={folderCounts(all)} showDrafts={viewer.side === "couple"}>
+    <MailShell counts={mailCounts(all)} showDrafts={viewer.side === "couple"}>
       <MarkRead threadId={threadId} hasNew={messages.some((m) => m.isNew)} />
       <h1 className="text-xl font-semibold">{subject ?? "Conversation"}</h1>
       <p className="mb-4 text-sm text-gray-500">With {counterpart}</p>

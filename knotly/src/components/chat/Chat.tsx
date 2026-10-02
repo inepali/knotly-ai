@@ -4,10 +4,10 @@
 "use client";
 import { useChat } from "@ai-sdk/react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import AccountCard, { HAS_ACCOUNT_KEY, type Role } from "./cards/AccountCard";
-import { WorkspacePanel, chipLabel, deriveArtifacts, isPanelTool, summarize } from "./workspace";
+import { INBOX, WorkspacePanel, chipLabel, deriveArtifacts, isPanelTool, summarize } from "./workspace";
 
 type Action = { label: string; guestOnly?: boolean } & ({ href: string } | { prompt: string });
 
@@ -27,11 +27,41 @@ const vendorActions: Action[] = [
   { label: "Publish my listing", prompt: "Is my listing ready to publish?" },
 ];
 
+// Messages from the other side that haven't been opened (RLS limits this to their threads).
+async function countUnread(role: Role) {
+  const { count } = await supabaseBrowser()
+    .from("messages")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "sent")
+    .is("read_at", null)
+    .in("sender", role === "vendor" ? ["couple", "couple_agent", "system"] : ["vendor", "vendor_agent", "system"]);
+  return count ?? 0;
+}
+
 const pill =
   "rounded-full border border-gray-300 px-5 py-2.5 text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-900";
 
 export default function Chat() {
-  const { messages, sendMessage, status } = useChat(); // talks to /api/chat by default
+  // Set when the couple agent hands a guest to vendor onboarding (switchToVendor);
+  // once that reply finishes, the chat continues with the vendor agent.
+  const handoff = useRef(false);
+  const { messages, sendMessage, status } = useChat({
+    // talks to /api/chat by default
+    onFinish: ({ message, isError, isAbort }) => {
+      if (isError || isAbort) return;
+      const switched = message.parts.some(
+        (p) =>
+          p.type === "tool-switchToVendor" &&
+          "state" in p &&
+          p.state === "output-available" &&
+          (p.output as { ok?: boolean }).ok
+      );
+      if (switched) {
+        handoff.current = true;
+        setRole("vendor");
+      }
+    },
+  });
   const [input, setInput] = useState("");
   const [ready, setReady] = useState(false); // true once a (guest) session exists
   // null = guest; otherwise the email/phone they signed in with
@@ -49,7 +79,10 @@ export default function Chat() {
   const busy = !ready || status === "submitted" || status === "streaming";
   const empty = messages.length === 0;
   const artifacts = deriveArtifacts(messages);
-  const activeId = pick && pick.at === artifacts.length ? pick.id : artifacts.at(-1)?.id;
+  // Signed-in users land on their Inbox when nothing else is open.
+  const activeId =
+    pick && pick.at === artifacts.length ? pick.id : (artifacts.at(-1)?.id ?? (account ? INBOX : undefined));
+  const inboxOpen = pick?.id === INBOX && pick.at === artifacts.length;
   const unseen = artifacts.length - seen;
 
   async function loadAccount() {
@@ -61,18 +94,10 @@ export default function Chat() {
       const { data: profile } = await sb.from("profiles").select("role").eq("id", u.id).maybeSingle();
       const r = (profile?.role as Role) ?? "couple";
       setRole(r);
-      if (!u.is_anonymous) {
-        // Messages from the other side that haven't been opened (RLS limits this to their threads).
-        const { count } = await sb
-          .from("messages")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "sent")
-          .is("read_at", null)
-          .in("sender", r === "vendor" ? ["couple", "couple_agent", "system"] : ["vendor", "vendor_agent", "system"]);
-        setUnread(count ?? 0);
-      }
+      if (!u.is_anonymous) setUnread(await countUnread(r));
     }
   }
+
 
   // Every visitor gets a session so chats can be tied to a profile; guests upgrade later.
   useEffect(() => {
@@ -96,7 +121,17 @@ export default function Chat() {
   }, [messages, status]);
 
   // `returning` lets the agent offer sign-in instead of sign-up to a known browser.
-  const post = (text: string) => sendMessage({ text }, { body: { returning } });
+  const post = useCallback(
+    (text: string) => sendMessage({ text }, { body: { returning } }),
+    [sendMessage, returning]
+  );
+
+  // Hand-off: start the vendor agent's turn with a short, visible message.
+  useEffect(() => {
+    if (status !== "ready" || !handoff.current) return;
+    handoff.current = false;
+    post("I'd like to set up my vendor listing.");
+  }, [status, post]);
 
   const send = (text: string) => {
     if (!text.trim() || busy) return;
@@ -110,6 +145,9 @@ export default function Chat() {
     setSeen(artifacts.length);
   }
 
+  // Stable, so the Inbox pane's mark-as-read effect doesn't re-run on every render.
+  const refreshUnread = useCallback(async () => setUnread(await countUnread(role)), [role]);
+
   async function signOut() {
     await supabaseBrowser().auth.signOut();
     window.location.reload(); // start over as a fresh guest
@@ -117,9 +155,13 @@ export default function Chat() {
 
   const accountBar = account && (
     <p className="text-xs text-gray-500">
-      <Link href="/inbox" className="mr-3 font-medium text-gray-800 underline-offset-2 hover:underline dark:text-gray-200">
-        Inbox{unread > 0 && <span className="ml-1 rounded-full bg-black px-1.5 text-white dark:bg-white dark:text-black">{unread}</span>}
-      </Link>
+      <button
+        type="button"
+        onClick={() => open(INBOX)}
+        className="mr-3 font-medium text-gray-800 underline-offset-2 hover:underline dark:text-gray-200"
+      >
+        Messages{unread > 0 && <span className="ml-1 rounded-full bg-black px-1.5 text-white dark:bg-white dark:text-black">{unread}</span>}
+      </button>
       Signed in as {account}
       {role !== "couple" && ` (${role})`} ·{" "}
       <button type="button" onClick={signOut} className="underline">
@@ -169,8 +211,8 @@ export default function Chat() {
     </form>
   );
 
-  // Before the first message: the centered welcome screen.
-  if (empty) {
+  // Before the first message: the centered welcome screen (unless they opened the Inbox).
+  if (empty && !inboxOpen) {
     const actions = role === "vendor" ? vendorActions : coupleActions;
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center px-4">
@@ -325,7 +367,15 @@ export default function Chat() {
             mobileView === "workspace" ? "" : "hidden"
           }`}
         >
-          <WorkspacePanel artifacts={artifacts} activeId={activeId} onSelect={open} onAsk={post} />
+          <WorkspacePanel
+            artifacts={artifacts}
+            activeId={activeId}
+            onSelect={open}
+            onAsk={post}
+            showInbox={!!account}
+            unread={unread}
+            onInboxChange={refreshUnread}
+          />
         </aside>
       </div>
     </div>

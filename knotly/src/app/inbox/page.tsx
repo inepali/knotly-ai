@@ -1,70 +1,97 @@
-// src/app/inbox/page.tsx — Inbox / Sent / Drafts, like an email client.
+// src/app/inbox/page.tsx — Messages (one row per conversation) and Drafts.
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
-import { getViewer, loadMailbox, type Folder } from "@/lib/mailbox";
-import MailShell, { folderCounts, when } from "@/components/inbox/MailShell";
+import { getViewer, loadMailbox } from "@/lib/mailbox";
+import { groupConversations, mailCounts, type MailView } from "@/lib/mail-threads";
+import MailShell, { when } from "@/components/inbox/MailShell";
+import { SendDraftButton } from "@/components/inbox/ThreadActions";
 
-const EMPTY: Record<Folder, string> = {
-  inbox: "No messages yet. Replies will show up here.",
-  sent: "Nothing sent yet.",
-  drafts: "No drafts. Ask the assistant to draft an inquiry to a vendor.",
-};
+const empty = "rounded-xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-gray-700";
 
 export default async function InboxPage(props: PageProps<"/inbox">) {
   const { folder: raw } = await props.searchParams;
-  const folder: Folder = raw === "sent" || raw === "drafts" ? raw : "inbox";
+  // Old ?folder=inbox / ?folder=sent links land on Messages.
+  const folder: MailView = raw === "drafts" ? "drafts" : "messages";
 
   const sb = await supabaseServer();
   const viewer = await getViewer(sb);
   if (!viewer) redirect("/chat"); // guests sign in from the chat first
 
   const items = await loadMailbox(sb, viewer.side);
-  const shown = items.filter((i) => i.folder === folder);
+  const conversations = groupConversations(items);
+  const drafts = items.filter((i) => i.folder === "drafts");
 
   return (
-    <MailShell active={folder} counts={folderCounts(items)} showDrafts={viewer.side === "couple"}>
-      <h1 className="mb-3 text-xl font-semibold capitalize">{folder}</h1>
-      {shown.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-gray-700">
-          {EMPTY[folder]}
-        </p>
-      ) : (
-        <ul className="divide-y divide-gray-200 overflow-hidden rounded-xl border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
-          {shown.map((m) => (
-            <li key={m.id}>
-              <Link
-                href={`/inbox/${m.threadId}`}
-                className={`grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)_auto] items-baseline gap-4 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-900 ${
-                  m.isNew ? "font-semibold" : ""
-                }`}
-              >
-                <span className="truncate">
-                  {folder === "inbox" ? "" : "To: "}
-                  {m.counterpart}
-                </span>
-                <span className="min-w-0 truncate">
-                  {m.isNew && (
-                    <span className="mr-2 rounded-full bg-black px-2 py-0.5 text-xs font-medium text-white dark:bg-white dark:text-black">
-                      New
+    <MailShell active={folder} counts={mailCounts(items)} showDrafts={viewer.side === "couple"}>
+      <h1 className="mb-3 text-xl font-semibold">{folder === "drafts" ? "Drafts" : "Messages"}</h1>
+
+      {folder === "messages" &&
+        (conversations.length === 0 ? (
+          <p className={empty}>No conversations yet. Messages you send and replies you get will show up here.</p>
+        ) : (
+          <ul className="divide-y divide-gray-200 overflow-hidden rounded-xl border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+            {conversations.map((c) => (
+              <li key={c.threadId}>
+                <Link
+                  href={`/inbox/${c.threadId}`}
+                  className={`grid grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto] items-baseline gap-4 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-900 ${
+                    c.unread ? "font-semibold" : ""
+                  }`}
+                >
+                  <span className="truncate">
+                    {c.counterpart}
+                    {c.unread > 0 && (
+                      <span className="ml-2 rounded-full bg-black px-2 py-0.5 text-xs text-white dark:bg-white dark:text-black">{c.unread} new</span>
+                    )}
+                  </span>
+                  <span className="min-w-0 truncate">
+                    {c.drafts > 0 && (
+                      <span className="mr-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-normal text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                        {c.drafts} draft{c.drafts === 1 ? "" : "s"}
+                      </span>
+                    )}
+                    {c.subject ?? "(no subject)"}
+                    <span className="font-normal text-gray-500">
+                      {" "}
+                      — {c.last.folder === "sent" ? "You: " : ""}
+                      {c.last.body.slice(0, 120)}
                     </span>
-                  )}
-                  {m.folder === "drafts" && (
-                    <span className="mr-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">
-                      Draft
-                    </span>
-                  )}
-                  {m.subject ?? "(no subject)"}
-                  <span className="font-normal text-gray-500"> — {m.body.slice(0, 120)}</span>
-                </span>
-                <time dateTime={m.createdAt} className="text-xs font-normal text-gray-500">
-                  {when(m.createdAt)}
-                </time>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+                  </span>
+                  <time dateTime={c.last.createdAt} className="text-xs font-normal text-gray-500">
+                    {when(c.last.createdAt)}
+                  </time>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ))}
+
+      {folder === "drafts" &&
+        (drafts.length === 0 ? (
+          <p className={empty}>No drafts. When the assistant writes to a vendor for you, it waits here for your review.</p>
+        ) : (
+          <>
+            <p className="mb-3 text-sm text-gray-500">Nothing here has been sent. Review each message, then tap Send.</p>
+            <ul className="space-y-3">
+              {drafts.map((d) => (
+                <li key={d.id} className="rounded-xl border border-dashed border-amber-300 bg-amber-50/50 p-4 dark:border-amber-800 dark:bg-amber-950/20">
+                  <p className="text-xs text-gray-500">
+                    To {d.counterpart} · drafted {when(d.createdAt)}
+                  </p>
+                  {d.subject && <p className="mt-1 font-medium">{d.subject}</p>}
+                  <p className="mt-1 whitespace-pre-wrap text-sm">{d.body}</p>
+                  <div className="mt-3 flex items-center gap-4">
+                    <SendDraftButton messageId={d.id} />
+                    <Link href={`/inbox/${d.threadId}`} className="text-sm underline-offset-2 hover:underline">
+                      Open conversation
+                    </Link>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        ))}
     </MailShell>
   );
 }

@@ -5,8 +5,9 @@ import { after } from "next/server";
 import { Category, resolveMetro, type ToolCtx } from "../shared";
 import { refreshVendorEmbedding } from "@/lib/embeddings";
 import { RuleSchema, NO_THREAD } from "../vendor/rules";
+import { accountTools } from "./account";
 
-export function vendorTools({ sb, userId }: ToolCtx) {
+export function vendorTools({ sb, userId, isGuest }: ToolCtx) {
   // Re-embed after the reply finishes, so the chat stays fast
   const reembed = () => after(() => refreshVendorEmbedding(userId));
 
@@ -35,6 +36,8 @@ export function vendorTools({ sb, userId }: ToolCtx) {
   }
 
   return {
+    ...accountTools({ sb, userId, isGuest }, "vendor"),
+
     saveRule: tool({
       description:
         "Save ONE business rule for the vendor's AI agent. First restate the rule in plain words and get a clear yes. " +
@@ -261,6 +264,9 @@ export function vendorTools({ sb, userId }: ToolCtx) {
       execute: async ({ publish }) => {
         const v = await getVendor();
         if (!v) return { ok: false, error: "No profile yet." };
+        // A listing couples can contact must belong to a real, verified account.
+        if (publish && isGuest)
+          return { ok: false, error: "Create a vendor account first: call requestSignUp with role \"vendor\"." };
         if (publish && !v.vendor_packages.length)
           return { ok: false, error: "Add at least one package first." };
         await sb
