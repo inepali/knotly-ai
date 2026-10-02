@@ -4,7 +4,7 @@
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { Identifier, Password, TERMS_VERSION, fail, firstIssue } from "@/lib/auth";
+import { Identifier, Password, SignupRole, TERMS_VERSION, fail, firstIssue } from "@/lib/auth";
 
 const Body = z.intersection(
   Identifier,
@@ -12,13 +12,14 @@ const Body = z.intersection(
     code: z.string().regex(/^\d{6,10}$/, "Enter the code we sent you."),
     password: Password,
     acceptedTerms: z.literal(true, "Please accept the terms."),
+    role: SignupRole.default("couple"),
   })
 );
 
 export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json());
   if (!parsed.success) return fail(firstIssue(parsed.error));
-  const { method, identifier, code, password } = parsed.data;
+  const { method, identifier, code, password, role } = parsed.data;
 
   const sb = await supabaseServer();
   const { data, error } =
@@ -33,10 +34,17 @@ export async function POST(req: Request) {
     return fail(pwError.message);
   }
 
-  // is_guest and email aren't user-editable (column grants), so the admin client writes them.
+  // role, is_guest and email aren't user-editable (column grants), so the admin client
+  // writes them. Guests start as 'couple'; an admin is never downgraded here.
+  const { data: current } = await supabaseAdmin
+    .from("profiles")
+    .select("role")
+    .eq("id", data.user.id)
+    .single();
   await supabaseAdmin
     .from("profiles")
     .update({
+      ...(current?.role === "admin" ? {} : { role }),
       is_guest: false,
       ...(method === "email" ? { email: identifier.toLowerCase() } : { phone: identifier }),
       terms_version: TERMS_VERSION,
@@ -44,5 +52,5 @@ export async function POST(req: Request) {
     })
     .eq("id", data.user.id);
 
-  return Response.json({ ok: true });
+  return Response.json({ ok: true, role: current?.role === "admin" ? "admin" : role });
 }

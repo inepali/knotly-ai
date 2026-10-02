@@ -197,12 +197,18 @@ export function coupleTools({ sb, userId, isGuest }: ToolCtx) {
 
     requestSignUp: tool({
       description:
-        "Show the create-account card (email or phone + password) to a GUEST. Call after a few messages, or before contacting vendors.",
+        "Show the create-account card (email or phone + password) to a GUEST. Call after a few messages, before contacting vendors, or right away for a wedding vendor.",
       inputSchema: z.object({
         reason: z.string().describe("One short sentence shown on the card"),
+        role: z
+          .enum(["couple", "vendor"])
+          .optional()
+          .describe('"vendor" if they run a wedding business; otherwise leave out'),
       }),
-      execute: async ({ reason }) =>
-        isGuest ? { show: "signup", reason } : { alreadySignedIn: true },
+      execute: async ({ reason, role }) =>
+        isGuest
+          ? { show: "signup", reason, role: role ?? "couple" }
+          : { alreadySignedIn: true },
     }),
 
     requestSignIn: tool({

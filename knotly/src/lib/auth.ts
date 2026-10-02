@@ -15,6 +15,10 @@ export type Identifier = z.infer<typeof Identifier>;
 
 export const Password = z.string().min(8, "Use at least 8 characters");
 
+// Roles a person can pick at sign-up. 'admin' is never self-assigned; set it in the database.
+export const SignupRole = z.enum(["couple", "vendor"]);
+export type SignupRole = z.infer<typeof SignupRole>;
+
 // { email } or { phone }, the shape supabase-js expects.
 export const credential = ({ method, identifier }: Identifier) =>
   method === "email" ? { email: identifier.toLowerCase() } : { phone: identifier };

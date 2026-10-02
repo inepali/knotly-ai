@@ -4,6 +4,7 @@ import { z } from "zod";
 import { after } from "next/server";
 import { Category, resolveMetro, type ToolCtx } from "../shared";
 import { refreshVendorEmbedding } from "@/lib/embeddings";
+import { RuleSchema, NO_THREAD } from "../vendor/rules";
 
 export function vendorTools({ sb, userId }: ToolCtx) {
   // Re-embed after the reply finishes, so the chat stays fast
@@ -34,6 +35,100 @@ export function vendorTools({ sb, userId }: ToolCtx) {
   }
 
   return {
+    saveRule: tool({
+      description:
+        "Save ONE business rule for the vendor's AI agent. First restate the rule in plain words and get a clear yes. " +
+        "Call once per rule.",
+      inputSchema: z.object({
+        rule: RuleSchema,
+        sourceText: z.string().describe("The vendor's own words for this rule"),
+      }),
+      execute: async ({ rule, sourceText }) => {
+        const { kind, ...params } = rule;
+        // One active rule per kind (except blackout / always_review, which can repeat)
+        if (!["blackout_weekday", "always_review"].includes(kind)) {
+          await sb
+            .from("vendor_agent_rules")
+            .update({ active: false })
+            .eq("vendor_id", userId)
+            .eq("kind", kind);
+        }
+        const { data, error } = await sb
+          .from("vendor_agent_rules")
+          .insert({ vendor_id: userId, kind, params, source_text: sourceText })
+          .select("id, kind, params")
+          .single();
+        return error
+          ? { ok: false, error: error.message }
+          : { ok: true, saved: data };
+      },
+    }),
+
+    listRules: tool({
+      description: "List the vendor's active agent rules and settings.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const [{ data: rules }, { data: settings }] = await Promise.all([
+          sb
+            .from("vendor_agent_rules")
+            .select("id, kind, params, source_text")
+            .eq("vendor_id", userId)
+            .eq("active", true),
+          sb
+            .from("vendor_agent_settings")
+            .select("*")
+            .eq("vendor_id", userId)
+            .single(),
+        ]);
+        return { rules, settings };
+      },
+    }),
+
+    setAvailability: tool({
+      description: "Block dates, mark them booked, or free them up.",
+      inputSchema: z.object({
+        dates: z.array(z.string().describe("YYYY-MM-DD")).min(1).max(60),
+        status: z.enum(["blocked", "booked", "free"]),
+      }),
+      execute: async ({ dates, status }) => {
+        if (status === "free") {
+          await sb
+            .from("vendor_availability")
+            .delete()
+            .eq("vendor_id", userId)
+            .in("date", dates)
+            .eq("thread_id", NO_THREAD);
+        } else {
+          await sb
+            .from("vendor_availability")
+            .upsert(
+              dates.map((date) => ({
+                vendor_id: userId,
+                date,
+                status,
+                thread_id: NO_THREAD,
+              }))
+            );
+        }
+        return { ok: true, dates, status };
+      },
+    }),
+
+    setAutonomy: tool({
+      description:
+        "Change how independently the agent works. 0 Shadow (drafts only), 1 Assist (answers alone, estimates need approval), 2 Autopilot (everything within rules), 3 Full (adds discounts within limit).",
+      inputSchema: z.object({ level: z.number().int().min(0).max(3) }),
+      execute: async ({ level }) => {
+        const { error } = await sb
+          .from("vendor_agent_settings")
+          .update({ autonomy_level: level })
+          .eq("vendor_id", userId);
+        return error
+          ? { ok: false, error: error.message }
+          : { ok: true, level };
+      },
+    }),
+
     getMyBusiness: tool({
       description:
         "Get the vendor's current profile, packages and review count.",

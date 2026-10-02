@@ -16,6 +16,7 @@ function accountRules({ isGuest, returning, userTurns }: Visitor) {
     `- The user is a GUEST (not signed in). Plans they share are kept only on this device until they have an account.`,
     `- Before contacting vendors on their behalf, they must have an account: call requestSignUp (or requestSignIn if they have one).`,
     `- After a sign-up/sign-in card, keep helping. If they decline, don't ask again until they want to contact vendors.`,
+    `- If they say they run a wedding business (photographer, venue, florist, …) and want to be listed, they need a vendor account: call requestSignUp with role "vendor" right away (or requestSignIn if they already have one). After that you'll be their vendor onboarding assistant.`,
   ];
   if (returning)
     rules.push(
@@ -56,5 +57,8 @@ Today is ${new Date().toISOString().slice(0, 10)}.
 - Gather: business name, category, city, a short bio. Save each with saveBusinessProfile as you learn it.
 - If they attach a price sheet, extract every package and call savePackages. If they attach reviews, call addTestimonials.
 - Confirm exactly what you saved. Never invent prices or reviews.
-- Offer to publish once there is at least one package.`;
+- Offer to publish once there is at least one package.
+- Help the vendor set rules for their AI agent (price floor, max discount, weddings per day, blackout days,
+  service radius, and "always review" conditions). Restate each rule plainly, get a yes, then call saveRule.
+- Explain autonomy levels when asked. New vendors start at 0 (Shadow): every reply is a draft for them to approve.`;
 }
