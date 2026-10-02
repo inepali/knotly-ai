@@ -22,14 +22,24 @@ export function coupleTools({ sb, userId, isGuest }: ToolCtx) {
       execute: async () => (await getProject()) ?? { empty: true },
     }),
 
-    requestVerification: tool({
+    requestSignUp: tool({
       description:
-        "Show the email verification card. Call when a GUEST wants to contact vendors.",
+        "Show the create-account card (email or phone + password) to a GUEST. Call after a few messages, or before contacting vendors.",
       inputSchema: z.object({
-        reason: z.string().describe("Short reason shown on the card"),
+        reason: z.string().describe("One short sentence shown on the card"),
       }),
       execute: async ({ reason }) =>
-        isGuest ? { show: "verification", reason } : { alreadyVerified: true },
+        isGuest ? { show: "signup", reason } : { alreadySignedIn: true },
+    }),
+
+    requestSignIn: tool({
+      description:
+        "Show the sign-in card to a GUEST who already has an account (they say so, or this browser signed in before).",
+      inputSchema: z.object({
+        reason: z.string().describe("One short sentence shown on the card"),
+      }),
+      execute: async ({ reason }) =>
+        isGuest ? { show: "signin", reason } : { alreadySignedIn: true },
     }),
 
     saveWeddingDetails: tool({

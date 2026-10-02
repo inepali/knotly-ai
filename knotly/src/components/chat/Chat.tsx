@@ -4,12 +4,15 @@ import { useChat } from "@ai-sdk/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
-import VerificationCard from "./cards/VerificationCard";
+import AccountCard, { HAS_ACCOUNT_KEY } from "./cards/AccountCard";
+
+type Action = { label: string; guestOnly?: boolean } & ({ href: string } | { prompt: string });
 
 // Pills under the composer: links go to a page, prompts start a conversation.
-const actions: ({ label: string } & ({ href: string } | { prompt: string }))[] =
+const actions: Action[] =
   [
-    { label: "Register", href: "/register" },
+    { label: "Register", prompt: "I'd like to create an account.", guestOnly: true },
+    { label: "Sign in", prompt: "I already have an account. Please sign me in.", guestOnly: true },
     { label: "Vendor Listing", href: "/vendors" },
     { label: "Search Vendors", href: "/search" },
     {
@@ -29,26 +32,56 @@ export default function Chat() {
   const { messages, sendMessage, status } = useChat(); // talks to /api/chat by default
   const [input, setInput] = useState("");
   const [ready, setReady] = useState(false); // true once a (guest) session exists
+  // null = guest; otherwise the email/phone they signed in with
+  const [account, setAccount] = useState<string | null>(null);
+  const [returning, setReturning] = useState(false); // this browser signed in before
   const busy = !ready || status === "submitted" || status === "streaming";
   const empty = messages.length === 0;
+
+  async function loadAccount() {
+    const { data } = await supabaseBrowser().auth.getUser();
+    const u = data.user;
+    setAccount(u && !u.is_anonymous ? u.email || u.phone || "your account" : null);
+  }
 
   // Every visitor gets a session so chats can be tied to a profile; guests upgrade later.
   useEffect(() => {
     const sb = supabaseBrowser();
     sb.auth.getSession().then(async ({ data }) => {
+      try {
+        setReturning(localStorage.getItem(HAS_ACCOUNT_KEY) === "1");
+      } catch {}
       if (!data.session) {
         const { error } = await sb.auth.signInAnonymously();
         if (error) console.error("Guest sign-in failed:", error.message);
       }
+      await loadAccount();
       setReady(true);
     });
   }, []);
 
+  // `returning` lets the agent offer sign-in instead of sign-up to a known browser.
+  const post = (text: string) => sendMessage({ text }, { body: { returning } });
+
   const send = (text: string) => {
     if (!text.trim() || busy) return;
-    sendMessage({ text });
+    post(text);
     setInput("");
   };
+
+  async function signOut() {
+    await supabaseBrowser().auth.signOut();
+    window.location.reload(); // start over as a fresh guest
+  }
+
+  const accountBar = account && (
+    <p className="py-2 text-right text-xs text-gray-500">
+      Signed in as {account} ·{" "}
+      <button type="button" onClick={signOut} className="underline">
+        Sign out
+      </button>
+    </p>
+  );
 
   const composer = (
     <form
@@ -101,12 +134,13 @@ export default function Chat() {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center px-4">
         <div className="w-full max-w-3xl">
+          {accountBar}
           <h1 className="mb-8 text-center text-2xl font-semibold sm:text-2xl">
             Congratulations on your engagement! What can I help with?
           </h1>
           {composer}
           <div className="mt-6 flex flex-wrap justify-center gap-3">
-            {actions.map((a) =>
+            {actions.filter((a) => !(a.guestOnly && account)).map((a) =>
               "href" in a ? (
                 <Link key={a.label} href={a.href} className={pill}>
                   {a.label}
@@ -130,6 +164,7 @@ export default function Chat() {
 
   return (
     <div className="mx-auto flex h-dvh w-full max-w-3xl flex-col px-4">
+      {accountBar}
       <div className="flex-1 space-y-3 overflow-y-auto py-6">
         {messages.map((m) => (
           <div key={m.id} className={m.role === "user" ? "text-right" : ""}>
@@ -148,15 +183,21 @@ export default function Chat() {
               }
 
               if (
-                part.type === "tool-requestVerification" &&
-                part.state === "output-available" &&
-                (part.output as any).show === "verification"
+                (part.type === "tool-requestSignUp" || part.type === "tool-requestSignIn") &&
+                part.state === "output-available"
               ) {
+                const out = part.output as { show?: "signup" | "signin"; reason?: string };
+                if (!out.show) return null; // already signed in
                 return (
-                  <VerificationCard
+                  <AccountCard
                     key={i}
-                    reason={(part.output as any).reason}
-                    onDone={(msg) => sendMessage({ text: msg })}
+                    initialMode={out.show}
+                    reason={out.reason ?? ""}
+                    onDone={async (msg) => {
+                      await loadAccount();
+                      setReturning(true);
+                      post(msg);
+                    }}
                   />
                 );
               }

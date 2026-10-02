@@ -13,23 +13,25 @@ import { supabaseServer } from "@/lib/supabase/server";
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json();
+  const { messages, returning }: { messages: UIMessage[]; returning?: boolean } =
+    await req.json();
 
   const sb = await supabaseServer();
   const {
     data: { user },
   } = await sb.auth.getUser();
   if (!user) return new Response("No session", { status: 401 });
+  const isGuest = user.is_anonymous ?? false;
 
   const result = streamText({
     model: chatModel,
-    system: coupleSystemPrompt(),
-    messages: await convertToModelMessages(messages),
-    tools: coupleTools({
-      sb,
-      userId: user.id,
-      isGuest: user.is_anonymous ?? false,
+    system: coupleSystemPrompt({
+      isGuest,
+      returning: isGuest && returning === true,
+      userTurns: messages.filter((m) => m.role === "user").length,
     }),
+    messages: await convertToModelMessages(messages),
+    tools: coupleTools({ sb, userId: user.id, isGuest }),
     stopWhen: stepCountIs(5), // the agent loop
     onStepFinish: ({ toolCalls, toolResults }) => {
       // Learning aid: watch the agent think in your terminal
