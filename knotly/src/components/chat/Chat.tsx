@@ -4,6 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import VerificationCard from "./cards/VerificationCard";
 
 // Pills under the composer: links go to a page, prompts start a conversation.
 const actions: ({ label: string } & ({ href: string } | { prompt: string }))[] =
@@ -145,6 +146,21 @@ export default function Chat() {
                   </p>
                 );
               }
+
+              if (
+                part.type === "tool-requestVerification" &&
+                part.state === "output-available" &&
+                (part.output as any).show === "verification"
+              ) {
+                return (
+                  <VerificationCard
+                    key={i}
+                    reason={(part.output as any).reason}
+                    onDone={(msg) => sendMessage({ text: msg })}
+                  />
+                );
+              }
+
               if (part.type.startsWith("tool-")) {
                 const name = part.type.slice(5);
                 const done =

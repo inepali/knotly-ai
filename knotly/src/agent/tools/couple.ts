@@ -3,7 +3,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { Category, resolveMetro, type ToolCtx } from "../shared";
 
-export function coupleTools({ sb, userId }: ToolCtx) {
+export function coupleTools({ sb, userId, isGuest }: ToolCtx) {
   async function getProject() {
     const { data } = await sb
       .from("couple_projects")
@@ -22,6 +22,16 @@ export function coupleTools({ sb, userId }: ToolCtx) {
       execute: async () => (await getProject()) ?? { empty: true },
     }),
 
+    requestVerification: tool({
+      description:
+        "Show the email verification card. Call when a GUEST wants to contact vendors.",
+      inputSchema: z.object({
+        reason: z.string().describe("Short reason shown on the card"),
+      }),
+      execute: async ({ reason }) =>
+        isGuest ? { show: "verification", reason } : { alreadyVerified: true },
+    }),
+
     saveWeddingDetails: tool({
       description:
         "Save wedding details. Call as soon as you learn ANY field; leave out unknown fields.",
@@ -32,6 +42,12 @@ export function coupleTools({ sb, userId }: ToolCtx) {
           .optional()
           .describe("YYYY-MM-DD; use the 1st if only the month is known"),
         metro: z.string().optional().describe('City, e.g. "Charlotte"'),
+        venue: z
+          .string()
+          .optional()
+          .describe(
+            'Venue name once booked or chosen, e.g. "Crystal Ballroom"'
+          ),
         guestCount: z.number().int().positive().optional(),
         budgetTotal: z
           .number()
@@ -65,6 +81,7 @@ export function coupleTools({ sb, userId }: ToolCtx) {
             partner_names: input.partnerNames,
             wedding_date: input.weddingDate,
             metro_slug,
+            venue: input.venue,
             guest_count: input.guestCount,
             budget_total: input.budgetTotal,
             style: input.style,
@@ -88,6 +105,7 @@ export function coupleTools({ sb, userId }: ToolCtx) {
         if (error) return { ok: false, error: error.message };
 
         const missing = [
+          "partner_names",
           "wedding_date",
           "metro_slug",
           "guest_count",

@@ -18,7 +18,11 @@ export const CATEGORIES = [
 ] as const;
 export const Category = z.enum(CATEGORIES);
 
-export type ToolCtx = { sb: SupabaseClient; userId: string };
+export type ToolCtx = {
+  sb: SupabaseClient;
+  userId: string;
+  isGuest: boolean; // anonymous session that hasn't verified an email yet
+};
 
 // "Charlotte", "charlotte, nc" or "charlotte-nc" -> metro row (or null)
 export async function resolveMetro(sb: SupabaseClient, input: string) {

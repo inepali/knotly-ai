@@ -25,7 +25,11 @@ export async function POST(req: Request) {
     model: chatModel,
     system: coupleSystemPrompt(),
     messages: await convertToModelMessages(messages),
-    tools: coupleTools({ sb, userId: user.id }),
+    tools: coupleTools({
+      sb,
+      userId: user.id,
+      isGuest: user.is_anonymous ?? false,
+    }),
     stopWhen: stepCountIs(5), // the agent loop
     onStepFinish: ({ toolCalls, toolResults }) => {
       // Learning aid: watch the agent think in your terminal
