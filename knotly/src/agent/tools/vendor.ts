@@ -4,8 +4,22 @@ import { z } from "zod";
 import { after } from "next/server";
 import { Category, resolveMetro, type ToolCtx } from "../shared";
 import { refreshVendorEmbedding } from "@/lib/embeddings";
-import { RuleSchema, NO_THREAD } from "../vendor/rules";
+import { RuleSchema, NO_THREAD, Rule } from "../vendor/rules";
 import { accountTools } from "./account";
+
+export function milesBetween(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number }
+) {
+  const R = 3959,
+    toRad = (x: number) => (x * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat),
+    dLng = toRad(b.lng - a.lng);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
 
 export function vendorTools({ sb, userId, isGuest }: ToolCtx) {
   // Re-embed after the reply finishes, so the chat stays fast
@@ -102,16 +116,14 @@ export function vendorTools({ sb, userId, isGuest }: ToolCtx) {
             .in("date", dates)
             .eq("thread_id", NO_THREAD);
         } else {
-          await sb
-            .from("vendor_availability")
-            .upsert(
-              dates.map((date) => ({
-                vendor_id: userId,
-                date,
-                status,
-                thread_id: NO_THREAD,
-              }))
-            );
+          await sb.from("vendor_availability").upsert(
+            dates.map((date) => ({
+              vendor_id: userId,
+              date,
+              status,
+              thread_id: NO_THREAD,
+            }))
+          );
         }
         return { ok: true, dates, status };
       },
@@ -266,7 +278,11 @@ export function vendorTools({ sb, userId, isGuest }: ToolCtx) {
         if (!v) return { ok: false, error: "No profile yet." };
         // A listing couples can contact must belong to a real, verified account.
         if (publish && isGuest)
-          return { ok: false, error: "Create a vendor account first: call requestSignUp with role \"vendor\"." };
+          return {
+            ok: false,
+            error:
+              'Create a vendor account first: call requestSignUp with role "vendor".',
+          };
         if (publish && !v.vendor_packages.length)
           return { ok: false, error: "Add at least one package first." };
         await sb
