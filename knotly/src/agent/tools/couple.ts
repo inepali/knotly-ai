@@ -16,6 +16,101 @@ export function coupleTools({ sb, userId, isGuest }: ToolCtx) {
   }
 
   return {
+    draftInquiry: tool({
+      description:
+        "Draft inquiry messages to 1-5 vendors. Saves DRAFTS only. The couple must tap Send on each card.",
+      inputSchema: z.object({
+        drafts: z
+          .array(
+            // Loose schema on purpose: a failed schema check never reaches execute and
+            // shows nothing in the chat, so we validate below and return a readable error.
+            z.object({
+              vendorId: z.string().describe("The vendor's id from searchVendors results"),
+              subject: z.string().describe("Under 100 characters"),
+              body: z
+                .string()
+                .describe(
+                  "Under 1500 characters. Warm and specific: date, city, guests, style, what they want from THIS vendor"
+                ),
+            })
+          )
+          .min(1)
+          .max(5),
+      }),
+      execute: async ({ drafts }) => {
+        if (isGuest)
+          return {
+            ok: false,
+            error: "Guests can't contact vendors. Call requestSignUp (or requestSignIn).",
+          };
+        const wedding = await getProject();
+        if (!wedding)
+          return { ok: false, error: "Save wedding details first." };
+
+        const saved = [];
+        const failed: { vendorId: string; error: string }[] = [];
+        for (const d of drafts) {
+          if (!z.uuid().safeParse(d.vendorId).success) {
+            failed.push({ vendorId: d.vendorId, error: "Not a vendor id. Use the id from searchVendors." });
+            continue;
+          }
+          d.subject = d.subject.trim().slice(0, 100);
+          d.body = d.body.trim().slice(0, 1500);
+          // Reuse the thread with this vendor, or start one
+          let { data: thread } = await sb
+            .from("threads")
+            .select("id, vendors(business_name)")
+            .eq("project_id", wedding.id)
+            .eq("vendor_id", d.vendorId)
+            .maybeSingle();
+          if (!thread) {
+            const created = await sb
+              .from("threads")
+              .insert({ project_id: wedding.id, vendor_id: d.vendorId })
+              .select("id, vendors(business_name)")
+              .single();
+            thread = created.data;
+            if (!thread) {
+              failed.push({ vendorId: d.vendorId, error: created.error?.message ?? "Couldn't start a thread." });
+              continue;
+            }
+          }
+          const { data: msg, error } = await sb
+            .from("messages")
+            .insert({
+              thread_id: thread.id,
+              sender: "couple_agent",
+              status: "pending_approval",
+              subject: d.subject,
+              body: d.body,
+              payload: {
+                // facts, so the vendor's agent needn't parse prose
+                type: "inquiry",
+                weddingDate: wedding.wedding_date,
+                metro: wedding.metro_slug,
+                guestCount: wedding.guest_count,
+                style: wedding.style,
+              },
+            })
+            .select("id, subject, body")
+            .single();
+          if (error) return { ok: false, error: error.message };
+          saved.push({
+            ...msg,
+            vendorName: (thread as any).vendors.business_name,
+          });
+        }
+        if (!saved.length)
+          return { ok: false, error: "No drafts were saved.", failed };
+        return {
+          ok: true,
+          drafts: saved,
+          failed,
+          note: "Only the drafts listed here were saved; the couple sees them as cards and taps Send. Mention any failed ones.",
+        };
+      },
+    }),
+
     searchVendors: tool({
       description:
         "Search published vendors by meaning plus filters. Uses the saved wedding city and style by default.",

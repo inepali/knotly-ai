@@ -2,10 +2,11 @@
 "use client";
 import { useChat } from "@ai-sdk/react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentProps } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import AccountCard, { HAS_ACCOUNT_KEY } from "./cards/AccountCard";
 import VendorListCard from "./cards/VendorListCard";
+import InquiryDraftsCard from "./cards/InquiryDraftsCard";
 
 type Action = { label: string; guestOnly?: boolean } & (
   | { href: string }
@@ -39,7 +40,7 @@ const actions: Action[] = [
 const pill =
   "rounded-full border border-gray-300 px-5 py-2.5 text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-900";
 
-export default function Chat() {
+export default function Chat(guest = true) {
   const { messages, sendMessage, status } = useChat(); // talks to /api/chat by default
   const [input, setInput] = useState("");
   const [ready, setReady] = useState(false); // true once a (guest) session exists
@@ -184,12 +185,55 @@ export default function Chat() {
         {messages.map((m) => (
           <div key={m.id} className={m.role === "user" ? "text-right" : ""}>
             {m.parts.map((part, i) => {
+              // Failed tool calls. Calls whose input failed the schema arrive as
+              // "dynamic-tool" parts, so without this they'd render nothing at all.
+              if (
+                (part.type === "dynamic-tool" ||
+                  part.type.startsWith("tool-")) &&
+                "state" in part &&
+                part.state === "output-error"
+              ) {
+                const name =
+                  part.type === "dynamic-tool"
+                    ? part.toolName
+                    : part.type.slice("tool-".length);
+                return (
+                  <p key={i} className="text-sm text-red-600">
+                    ✕ {name} failed
+                    {"errorText" in part && part.errorText
+                      ? `: ${part.errorText}`
+                      : ""}
+                  </p>
+                );
+              }
+
+              if (part.type === "tool-draftInquiry") {
+                return part.state === "output-available" ? (
+                  <InquiryDraftsCard
+                    key={i}
+                    data={
+                      part.output as ComponentProps<
+                        typeof InquiryDraftsCard
+                      >["data"]
+                    }
+                  />
+                ) : (
+                  <p key={i} className="text-sm text-gray-400">
+                    Drafting messages…
+                  </p>
+                );
+              }
+
               if (part.type === "tool-searchVendors") {
                 return part.state === "output-available" ? (
                   <VendorListCard
                     key={i}
-                    data={part.output as any}
-                    onAsk={(t) => sendMessage({ text: t })}
+                    data={
+                      part.output as ComponentProps<
+                        typeof VendorListCard
+                      >["data"]
+                    }
+                    onAsk={post}
                   />
                 ) : (
                   <p key={i} className="text-sm text-gray-400">
