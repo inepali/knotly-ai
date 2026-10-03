@@ -31,6 +31,20 @@ export async function sendMessageEmail(o: {
   });
 }
 
+export async function notify(
+  to: string,
+  subject: string,
+  text: string,
+  link: string
+) {
+  return resend.emails.send({
+    from: process.env.EMAIL_FROM!,
+    to: process.env.DEV_EMAIL_TO ?? to,
+    subject,
+    html: `<p>${esc(text)}</p><p><a href="${link}">Open Knotly</a></p>`,
+  });
+}
+
 export function sendInquiryEmail(o: {
   to: string;
   vendorName: string;
@@ -68,17 +82,20 @@ export async function sendDraftReviewEmail(o: {
   return resend.emails.send({
     from: process.env.EMAIL_FROM!,
     to: process.env.DEV_EMAIL_TO ?? o.to, // safety net while testing
-    subject: `Review needed: ${o.kind === "quote" ? "estimate" : "reply"} to ${o.coupleName}`,
+    subject: `Review needed: ${o.kind === "quote" ? "estimate" : "reply"} to ${
+      o.coupleName
+    }`,
     html: `<p>Hi ${esc(o.vendorName)},</p>
-      <p>Your Knotly assistant drafted this ${o.kind === "quote" ? "estimate" : "reply"} to <strong>${esc(
-        o.coupleName
-      )}</strong>. <strong>It has not been sent.</strong> Review it, edit if needed, and approve to send it.</p>
+      <p>Your Knotly assistant drafted this ${
+        o.kind === "quote" ? "estimate" : "reply"
+      } to <strong>${esc(
+      o.coupleName
+    )}</strong>. <strong>It has not been sent.</strong> Review it, edit if needed, and approve to send it.</p>
       ${warnings}
       <p style="margin:0"><strong>${esc(o.subject)}</strong></p>
-      <blockquote style="border-left:3px solid #ddd;padding-left:12px;white-space:pre-wrap">${esc(o.body).replace(
-        /\n/g,
-        "<br>"
-      )}</blockquote>
+      <blockquote style="border-left:3px solid #ddd;padding-left:12px;white-space:pre-wrap">${esc(
+        o.body
+      ).replace(/\n/g, "<br>")}</blockquote>
       <p><a href="${o.link}">Review and approve in Knotly</a></p>`,
   });
 }
