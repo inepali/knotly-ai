@@ -7,7 +7,16 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import AccountCard, { HAS_ACCOUNT_KEY, type Role } from "./cards/AccountCard";
-import { INBOX, WorkspacePanel, chipLabel, deriveArtifacts, isPanelTool, summarize } from "./workspace";
+import {
+  BUSINESS,
+  BUSINESS_TOOLS,
+  INBOX,
+  WorkspacePanel,
+  chipLabel,
+  deriveArtifacts,
+  isPanelTool,
+  summarize,
+} from "./workspace";
 
 type Action = { label: string; guestOnly?: boolean } & ({ href: string } | { prompt: string });
 
@@ -27,16 +36,23 @@ const vendorActions: Action[] = [
   { label: "Publish my listing", prompt: "Is my listing ready to publish?" },
 ];
 
-// Messages from the other side that haven't been opened (RLS limits this to their threads).
-async function countUnread(role: Role) {
-  const { count } = await supabaseBrowser()
-    .from("messages")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "sent")
-    .is("read_at", null)
-    .in("sender", role === "vendor" ? ["couple", "couple_agent", "system"] : ["vendor", "vendor_agent", "system"]);
-  return count ?? 0;
+// unread: messages from the other side not opened yet.
+// review: their own side's drafts waiting for approval (e.g. the vendor agent's replies).
+// RLS limits both to the user's own conversations.
+type MailCounts = { unread: number; review: number };
+async function countMail(role: Role): Promise<MailCounts> {
+  const sb = supabaseBrowser();
+  const mine = role === "vendor" ? ["vendor", "vendor_agent"] : ["couple", "couple_agent"];
+  const theirs = role === "vendor" ? ["couple", "couple_agent", "system"] : ["vendor", "vendor_agent", "system"];
+  const [unread, review] = await Promise.all([
+    sb.from("messages").select("id", { count: "exact", head: true }).eq("status", "sent").is("read_at", null).in("sender", theirs),
+    sb.from("messages").select("id", { count: "exact", head: true }).eq("status", "pending_approval").in("sender", mine),
+  ]);
+  return { unread: unread.count ?? 0, review: review.count ?? 0 };
 }
+
+// Check for new mail this often while the page is visible.
+const MAIL_POLL_MS = 20_000;
 
 const pill =
   "rounded-full border border-gray-300 px-5 py-2.5 text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-900";
@@ -73,17 +89,29 @@ export default function Chat() {
   const [pick, setPick] = useState<{ id: string; at: number } | null>(null);
   const [mobileView, setMobileView] = useState<"chat" | "workspace">("chat");
   const [seen, setSeen] = useState(0); // artifacts already viewed on mobile
-  const [unread, setUnread] = useState(0); // new messages waiting in /inbox
+  const [mail, setMail] = useState<MailCounts>({ unread: 0, review: 0 });
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const busy = !ready || status === "submitted" || status === "streaming";
   const empty = messages.length === 0;
   const artifacts = deriveArtifacts(messages);
-  // Signed-in users land on their Inbox when nothing else is open.
+  // With nothing else open: signed-in users land on Messages, guest vendors on Knowledge.
   const activeId =
-    pick && pick.at === artifacts.length ? pick.id : (artifacts.at(-1)?.id ?? (account ? INBOX : undefined));
+    pick && pick.at === artifacts.length
+      ? pick.id
+      : (artifacts.at(-1)?.id ?? (account ? INBOX : role === "vendor" ? BUSINESS : undefined));
   const inboxOpen = pick?.id === INBOX && pick.at === artifacts.length;
   const unseen = artifacts.length - seen;
+  // Each finished listing change (packages, add-ons, profile…) reloads My business.
+  const businessVersion = messages
+    .flatMap((m) => m.parts)
+    .filter(
+      (p) =>
+        p.type.startsWith("tool-") &&
+        BUSINESS_TOOLS.has(p.type.slice("tool-".length)) &&
+        "state" in p &&
+        p.state === "output-available"
+    ).length;
 
   async function loadAccount() {
     const sb = supabaseBrowser();
@@ -94,7 +122,7 @@ export default function Chat() {
       const { data: profile } = await sb.from("profiles").select("role").eq("id", u.id).maybeSingle();
       const r = (profile?.role as Role) ?? "couple";
       setRole(r);
-      if (!u.is_anonymous) setUnread(await countUnread(r));
+      if (!u.is_anonymous) setMail(await countMail(r));
     }
   }
 
@@ -114,6 +142,31 @@ export default function Chat() {
       setReady(true);
     });
   }, []);
+
+  // New messages arrive from the other side at any time: re-count while the page is
+  // visible, and right away when the user comes back to the tab.
+  useEffect(() => {
+    if (!account) return;
+    let off = false;
+    const tick = () => {
+      if (document.visibilityState !== "visible") return;
+      countMail(role).then((m) => !off && setMail(m));
+    };
+    const timer = setInterval(tick, MAIL_POLL_MS);
+    window.addEventListener("focus", tick);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      off = true;
+      clearInterval(timer);
+      window.removeEventListener("focus", tick);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [account, role]);
+
+  // Unread count in the browser tab title, e.g. "(2) Knotly".
+  useEffect(() => {
+    document.title = mail.unread ? `(${mail.unread}) Knotly` : "Knotly";
+  }, [mail.unread]);
 
   // Keep the newest message in view.
   useEffect(() => {
@@ -146,22 +199,39 @@ export default function Chat() {
   }
 
   // Stable, so the Inbox pane's mark-as-read effect doesn't re-run on every render.
-  const refreshUnread = useCallback(async () => setUnread(await countUnread(role)), [role]);
+  const refreshMail = useCallback(async () => setMail(await countMail(role)), [role]);
 
   async function signOut() {
     await supabaseBrowser().auth.signOut();
     window.location.reload(); // start over as a fresh guest
   }
 
+  // Always visible (desktop and mobile) for signed-in users.
+  const messagesButton = account && (
+    <button
+      type="button"
+      onClick={() => open(INBOX)}
+      aria-label={`Messages: ${mail.unread} unread${mail.review ? `, ${mail.review} to review` : ""}`}
+      className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 px-3 py-1 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-900"
+    >
+      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="m3 7 9 6 9-6" />
+      </svg>
+      <span className="hidden sm:inline">Messages</span>
+      {mail.unread > 0 && (
+        <span className="min-w-5 rounded-full bg-red-600 px-1.5 text-center text-xs font-semibold text-white">{mail.unread}</span>
+      )}
+      {mail.review > 0 && (
+        <span className="rounded-full bg-amber-100 px-1.5 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          {mail.review} to review
+        </span>
+      )}
+    </button>
+  );
+
   const accountBar = account && (
     <p className="text-xs text-gray-500">
-      <button
-        type="button"
-        onClick={() => open(INBOX)}
-        className="mr-3 font-medium text-gray-800 underline-offset-2 hover:underline dark:text-gray-200"
-      >
-        Messages{unread > 0 && <span className="ml-1 rounded-full bg-black px-1.5 text-white dark:bg-white dark:text-black">{unread}</span>}
-      </button>
       Signed in as {account}
       {role !== "couple" && ` (${role})`} ·{" "}
       <button type="button" onClick={signOut} className="underline">
@@ -217,7 +287,10 @@ export default function Chat() {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center px-4">
         <div className="w-full max-w-3xl">
-          <div className="mb-4 text-right">{accountBar}</div>
+          <div className="mb-4 flex items-center justify-end gap-3">
+            {messagesButton}
+            {accountBar}
+          </div>
           <h1 className="mb-8 text-center text-2xl font-semibold">
             {role === "vendor"
               ? "Welcome! Let's get your business in front of couples."
@@ -314,6 +387,19 @@ export default function Chat() {
                   </button>
                 );
 
+              // Listing changes: a chip that opens My business.
+              if (done && role === "vendor" && BUSINESS_TOOLS.has(tool))
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => open(BUSINESS)}
+                    className="my-1 mr-2 inline-flex items-center gap-2 rounded-full border border-gray-300 px-3 py-1 text-xs text-gray-700 dark:border-gray-700 dark:text-gray-300"
+                  >
+                    ✓ {chipLabel(tool, done)} <span aria-hidden>→</span>
+                  </button>
+                );
+
               return (
                 <span
                   key={i}
@@ -351,13 +437,16 @@ export default function Chat() {
               className={`rounded-md px-3 py-1 ${mobileView === v ? "bg-white shadow-sm dark:bg-gray-800" : "text-gray-500"}`}
             >
               {v === "chat" ? "Chat" : "Workspace"}
-              {v === "workspace" && unseen > 0 && mobileView === "chat" && (
-                <span className="ml-1 rounded-full bg-black px-1.5 text-xs text-white dark:bg-white dark:text-black">{unseen}</span>
+              {v === "workspace" && unseen + mail.unread > 0 && mobileView === "chat" && (
+                <span className="ml-1 rounded-full bg-red-600 px-1.5 text-xs text-white">{unseen + mail.unread}</span>
               )}
             </button>
           ))}
         </div>
-        <div className="hidden lg:block">{accountBar}</div>
+        <div className="flex items-center gap-3">
+          {messagesButton}
+          <div className="hidden lg:block">{accountBar}</div>
+        </div>
       </header>
 
       <div className="min-h-0 flex-1 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
@@ -373,8 +462,12 @@ export default function Chat() {
             onSelect={open}
             onAsk={post}
             showInbox={!!account}
-            unread={unread}
-            onInboxChange={refreshUnread}
+            showKnowledge={role === "vendor"}
+            showBusiness={role === "vendor"}
+            businessVersion={businessVersion}
+            unread={mail.unread}
+            mailVersion={mail.unread + mail.review}
+            onInboxChange={refreshMail}
           />
         </aside>
       </div>

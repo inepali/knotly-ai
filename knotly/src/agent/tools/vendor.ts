@@ -6,6 +6,8 @@ import { Category, resolveMetro, type ToolCtx } from "../shared";
 import { refreshVendorEmbedding } from "@/lib/embeddings";
 import { RuleSchema, NO_THREAD, Rule } from "../vendor/rules";
 import { accountTools } from "./account";
+import { ingestKnowledge, kindOfUrl, parsePublicUrl } from "@/lib/knowledge";
+import { PDF_UPLOADS_ENABLED } from "@/lib/flags";
 
 export function milesBetween(
   a: { lat: number; lng: number },
@@ -51,6 +53,38 @@ export function vendorTools({ sb, userId, isGuest }: ToolCtx) {
 
   return {
     ...accountTools({ sb, userId, isGuest }, "vendor"),
+
+    addKnowledge: tool({
+      description:
+        `Add to the vendor's knowledge base, which their assistant uses to answer couples: a link (website, Instagram, Facebook, YouTube) or an FAQ.${
+          PDF_UPLOADS_ENABLED ? " For PDFs, tell them to upload in the Knowledge tab." : " PDFs aren't supported yet."
+        }`,
+      inputSchema: z.object({
+        url: z.string().optional().describe("A link to learn from"),
+        question: z.string().optional().describe("FAQ question, in the couple's words"),
+        answer: z.string().optional().describe("FAQ answer, exactly as the vendor gives it"),
+      }),
+      execute: async ({ url, question, answer }) => {
+        if (!(await getVendor())) return { ok: false, error: "Create the business profile first." };
+        let row;
+        if (url) {
+          const u = parsePublicUrl(url);
+          if (!u) return { ok: false, error: "That isn't a public web address." };
+          row = { kind: kindOfUrl(u), url: u.toString(), title: u.hostname };
+        } else if (question && answer) {
+          row = { kind: "faq", question, answer, title: question };
+        } else return { ok: false, error: "Give a link, or both a question and an answer." };
+
+        const { data, error } = await sb
+          .from("vendor_knowledge")
+          .insert({ ...row, vendor_id: userId, status: "pending" })
+          .select("id, kind")
+          .single();
+        if (error) return { ok: false, error: error.message };
+        after(() => ingestKnowledge(data.id)); // reading a page takes a few seconds
+        return { ok: true, added: data.kind, note: "Being learned now; it shows as Ready in the Knowledge tab." };
+      },
+    }),
 
     saveRule: tool({
       description:
@@ -226,6 +260,33 @@ export function vendorTools({ sb, userId, isGuest }: ToolCtx) {
           .select("id, name, price");
         if (error) return { ok: false, error: error.message };
         await syncPrices();
+        reembed();
+        return { ok: true, saved: data };
+      },
+    }),
+
+    saveAddOns: tool({
+      description:
+        "Save optional add-ons sold on top of a package (second shooter, extra hour, album…). Whole USD. Only add-ons the vendor states.",
+      inputSchema: z.object({
+        addOns: z
+          .array(
+            z.object({
+              name: z.string().max(80),
+              description: z.string().max(400).optional(),
+              price: z.number().int().min(0),
+            })
+          )
+          .min(1)
+          .max(20),
+      }),
+      execute: async ({ addOns }) => {
+        if (!(await getVendor())) return { ok: false, error: "Create the business profile first." };
+        const { data, error } = await sb
+          .from("vendor_addons")
+          .insert(addOns.map((a) => ({ ...a, vendor_id: userId })))
+          .select("id, name, price");
+        if (error) return { ok: false, error: error.message };
         reembed();
         return { ok: true, saved: data };
       },

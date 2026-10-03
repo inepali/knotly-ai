@@ -47,3 +47,38 @@ export function sendInquiryEmail(o: {
     link: o.link,
   });
 }
+
+// Copy of an agent draft for the human vendor to review. Nothing has been sent to the
+// couple; the vendor approves (or edits) it in Knotly and only then does it go out.
+export async function sendDraftReviewEmail(o: {
+  to: string;
+  vendorName: string;
+  coupleName: string;
+  kind: string; // decision.responseType, e.g. "quote"
+  subject: string;
+  body: string;
+  warnings: string[];
+  link: string;
+}) {
+  const warnings = o.warnings.length
+    ? `<p style="background:#fef3c7;padding:8px 12px;border-radius:6px"><strong>Check before approving:</strong><br>${o.warnings
+        .map(esc)
+        .join("<br>")}</p>`
+    : "";
+  return resend.emails.send({
+    from: process.env.EMAIL_FROM!,
+    to: process.env.DEV_EMAIL_TO ?? o.to, // safety net while testing
+    subject: `Review needed: ${o.kind === "quote" ? "estimate" : "reply"} to ${o.coupleName}`,
+    html: `<p>Hi ${esc(o.vendorName)},</p>
+      <p>Your Knotly assistant drafted this ${o.kind === "quote" ? "estimate" : "reply"} to <strong>${esc(
+        o.coupleName
+      )}</strong>. <strong>It has not been sent.</strong> Review it, edit if needed, and approve to send it.</p>
+      ${warnings}
+      <p style="margin:0"><strong>${esc(o.subject)}</strong></p>
+      <blockquote style="border-left:3px solid #ddd;padding-left:12px;white-space:pre-wrap">${esc(o.body).replace(
+        /\n/g,
+        "<br>"
+      )}</blockquote>
+      <p><a href="${o.link}">Review and approve in Knotly</a></p>`,
+  });
+}

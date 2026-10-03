@@ -11,12 +11,10 @@ const FOLDERS: { key: MailView; label: string }[] = [
 export default function MailShell({
   active,
   counts,
-  showDrafts,
   children,
 }: {
   active?: MailView;
   counts: Record<MailView, number>;
-  showDrafts: boolean; // vendors never have drafts
   children: ReactNode;
 }) {
   return (
@@ -31,7 +29,7 @@ export default function MailShell({
       </header>
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 p-4 md:flex-row">
         <nav className="flex gap-1 md:w-44 md:flex-col" aria-label="Mailbox folders">
-          {FOLDERS.filter((f) => showDrafts || f.key !== "drafts").map((f) => (
+          {FOLDERS.map((f) => (
             <Link
               key={f.key}
               href={`/inbox?folder=${f.key}`}

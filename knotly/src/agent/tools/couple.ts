@@ -5,6 +5,7 @@ import { Category, resolveMetro, type ToolCtx } from "../shared";
 import { embedText } from "@/lib/embeddings";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { accountTools } from "./account";
+import { searchKnowledge } from "@/lib/knowledge";
 
 export function coupleTools({ sb, userId, isGuest }: ToolCtx) {
   async function getProject() {
@@ -173,6 +174,30 @@ export function coupleTools({ sb, userId, isGuest }: ToolCtx) {
       },
     }),
 
+    askVendorKnowledge: tool({
+      description:
+        "Look up a vendor's own information (their website, FAQs, brochures) to answer a couple's question about that vendor: policies, travel, deliverables, process, contact.",
+      inputSchema: z.object({
+        vendorId: z.string().describe("The vendor's id from searchVendors"),
+        question: z.string().describe("The couple's question, in their words"),
+      }),
+      execute: async ({ vendorId, question }) => {
+        if (!z.uuid().safeParse(vendorId).success) return { ok: false, error: "Use the vendor's id from searchVendors." };
+        // Only listings couples can see (RLS hides unpublished vendors from them).
+        const { data: v } = await sb.from("vendors").select("business_name").eq("id", vendorId).maybeSingle();
+        if (!v) return { ok: false, error: "Vendor not found." };
+        const hits = await searchKnowledge(vendorId, question, 5);
+        return hits.length
+          ? {
+              ok: true,
+              vendor: v.business_name,
+              excerpts: hits.map((h) => ({ from: h.title ?? h.kind, url: h.url, text: h.text })),
+              note: "Answer only from these excerpts and say they come from the vendor. If they don't answer it, suggest asking the vendor.",
+            }
+          : { ok: true, vendor: v.business_name, excerpts: [], note: "The vendor hasn't shared information on this. Suggest asking them directly." };
+      },
+    }),
+
     getVendorDetails: tool({
       description: "Get one vendor's packages and reviews.",
       inputSchema: z.object({ vendorId: z.string().uuid() }),
@@ -180,7 +205,7 @@ export function coupleTools({ sb, userId, isGuest }: ToolCtx) {
         const { data, error } = await sb
           .from("vendors")
           .select(
-            "id, business_name, category, bio, price_min, vendor_packages(name, price, inclusions), testimonials(author_name, rating, body, verified)"
+            "id, business_name, category, bio, price_min, vendor_packages(id, name, description, price, inclusions), vendor_addons(id, name, description, price), testimonials(author_name, rating, body, verified)"
           )
           .eq("id", vendorId)
           .single();

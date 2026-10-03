@@ -27,6 +27,7 @@ export type MailItem = {
   counterpart: string; // the other party's display name
   folder: Folder;
   isNew: boolean; // received and not opened yet
+  warnings: string[]; // the agent's notes on one of your own drafts (e.g. "below your price floor")
 };
 
 type Row = {
@@ -38,6 +39,7 @@ type Row = {
   body: string;
   created_at: string;
   read_at: string | null;
+  payload: { warnings?: string[] } | null;
   threads: {
     vendor_id: string;
     vendors: { business_name: string } | null;
@@ -46,7 +48,7 @@ type Row = {
 };
 
 const SELECT =
-  "id, thread_id, sender, status, subject, body, created_at, read_at, threads(vendor_id, vendors(business_name), couple_projects(partner_names))";
+  "id, thread_id, sender, status, subject, body, created_at, read_at, payload, threads(vendor_id, vendors(business_name), couple_projects(partner_names))";
 
 export async function getViewer(sb: SupabaseClient) {
   const {
@@ -78,6 +80,7 @@ function toItem(r: Row, side: Side): MailItem {
         : (r.threads?.couple_projects?.partner_names ?? "A couple"),
     folder,
     isNew: folder === "inbox" && !r.read_at,
+    warnings: folder === "drafts" && mine ? (r.payload?.warnings ?? []) : [],
   };
 }
 

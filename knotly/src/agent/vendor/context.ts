@@ -8,6 +8,7 @@ import {
   type Rule,
   type Booking,
 } from "./rules";
+import { searchKnowledge } from "@/lib/knowledge";
 
 export async function loadVendorCtx(threadId: string) {
   const { data: thread } = await db
@@ -18,7 +19,7 @@ export async function loadVendorCtx(threadId: string) {
   if (!thread) return null;
   const vid = thread.vendor_id;
 
-  const [vendor, settings, ruleRows, packages, bookings, msgs, project] =
+  const [vendor, settings, ruleRows, packages, addOns, bookings, msgs, project] =
     await Promise.all([
       db
         .from("vendors")
@@ -39,6 +40,7 @@ export async function loadVendorCtx(threadId: string) {
         .from("vendor_packages")
         .select("id, name, description, price, inclusions")
         .eq("vendor_id", vid),
+      db.from("vendor_addons").select("id, name, description, price").eq("vendor_id", vid),
       db
         .from("vendor_availability")
         .select("date, status, hold_expires_at")
@@ -76,6 +78,11 @@ export async function loadVendorCtx(threadId: string) {
     to = at(project.data?.metro_slug);
 
   const wedding = project.data!;
+  const lastCoupleMessage =
+    [...(msgs.data ?? [])].reverse().find((m) => m.sender.startsWith("couple"))?.body ?? "";
+  // What the vendor taught their assistant (site, FAQs, PDFs) that bears on this message.
+  const knowledge = await searchKnowledge(vid, lastCoupleMessage);
+
   return {
     threadId,
     paused: thread.vendor_agent_paused,
@@ -83,6 +90,7 @@ export async function loadVendorCtx(threadId: string) {
     settings: settings.data!,
     rules,
     packages: packages.data ?? [],
+    addOns: addOns.data ?? [],
     wedding,
     dateStatus: dateStatus(
       wedding.wedding_date,
@@ -96,10 +104,8 @@ export async function loadVendorCtx(threadId: string) {
         )
       : null,
     history: (msgs.data ?? []).map((m) => ({ from: m.sender, text: m.body })),
-    lastCoupleMessage:
-      [...(msgs.data ?? [])]
-        .reverse()
-        .find((m) => m.sender.startsWith("couple"))?.body ?? "",
+    lastCoupleMessage,
+    knowledge,
   };
 }
 export type VendorCtx = NonNullable<Awaited<ReturnType<typeof loadVendorCtx>>>;

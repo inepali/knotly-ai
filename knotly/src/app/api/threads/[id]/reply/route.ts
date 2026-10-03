@@ -2,11 +2,15 @@
 // Reply in a conversation, as the couple or the vendor. Replies are sent immediately
 // (only the agent's messages go through drafts) and the other side gets an email.
 import type { NextRequest } from "next/server";
+import { after } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { sendMessageEmail } from "@/lib/email";
 import { fail } from "@/lib/auth";
+import { runVendorAgent } from "@/agent/vendor/responder";
+
+export const maxDuration = 60;
 
 const Body = z.object({ body: z.string().trim().min(1, "Write a message first.").max(5000) });
 
@@ -87,6 +91,9 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/threads/[id
       await supabaseAdmin.from("messages").update({ emailed_at: new Date().toISOString() }).eq("id", msg.id);
     }
   }
+
+  // A couple's reply wakes the vendor's agent to draft the next response for review.
+  if (side === "couple") after(() => runVendorAgent(id, { appUrl: req.nextUrl.origin }));
 
   return Response.json({ ok: true, emailed });
 }

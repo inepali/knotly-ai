@@ -31,40 +31,47 @@ export default function VendorListCard({
       </p>
     );
 
+  // Columns follow the pane's width (container query), not the window's:
+  // three across when there's room, two on a narrow pane, one on phones.
   return (
-    <div className="grid gap-3 text-left">
-      {data.vendors.map((v) => (
-        <div key={v.id} className="rounded-2xl border p-4 shadow-sm">
-          <div className="flex items-baseline justify-between">
-            <strong>{v.name}</strong>
-            <span className="text-xs text-gray-500">{v.match}% match</span>
-          </div>
-          <p className="text-sm text-gray-600">
-            From ${v.priceFrom.toLocaleString()}
-            {v.rating ? ` · ${v.rating}★ (${v.reviews})` : " · New"}
-            {v.miles != null && ` · ${v.miles} mi`}
-          </p>
-          <p className="mt-1 line-clamp-2 text-sm">{v.blurb}</p>
-          <div className="mt-3 flex gap-2">
-            <button
-              className="rounded-full border px-3 py-1 text-sm"
-              onClick={() =>
-                onAsk(`Tell me more about ${v.name} (vendorId ${v.id})`)
-              }
-            >
-              Details
-            </button>
-            <button
-              className="rounded-full bg-black px-3 py-1 text-sm text-white"
-              onClick={() =>
-                onAsk(`I'd like a quote from ${v.name} (vendorId ${v.id})`)
-              }
-            >
-              Request quote
-            </button>
-          </div>
-        </div>
-      ))}
+    <div className="@container">
+      <div className="grid gap-3 text-left @md:grid-cols-2 @2xl:grid-cols-3">
+        {data.vendors.map((v) => (
+          <article
+            key={v.id}
+            className="flex h-full flex-col rounded-2xl border border-gray-200 p-4 shadow-sm dark:border-gray-800"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <h4 className="font-semibold leading-snug">{v.name}</h4>
+              <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-900 dark:text-gray-400">
+                {v.match}% match
+              </span>
+            </div>
+            <p className="mt-1 text-lg font-semibold">
+              <span className="text-xs font-normal text-gray-500">From </span>${v.priceFrom.toLocaleString()}
+            </p>
+            <p className="text-xs text-gray-500">
+              {v.rating ? `${v.rating}★ (${v.reviews})` : "New"}
+              {v.miles != null && ` · ${v.miles} mi away`}
+            </p>
+            <p className="mt-2 line-clamp-3 text-sm text-gray-700 dark:text-gray-300">{v.blurb}</p>
+            <div className="mt-auto flex gap-2 pt-4">
+              <button
+                className="flex-1 rounded-full border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-700"
+                onClick={() => onAsk(`Tell me more about ${v.name} (vendorId ${v.id})`)}
+              >
+                Details
+              </button>
+              <button
+                className="flex-1 rounded-full bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black"
+                onClick={() => onAsk(`I'd like a quote from ${v.name} (vendorId ${v.id})`)}
+              >
+                Request quote
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
     </div>
   );
 }

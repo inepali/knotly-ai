@@ -15,7 +15,7 @@ export async function refreshVendorEmbedding(vendorId: string) {
   const { data: v } = await supabaseAdmin
     .from("vendors")
     .select(
-      "business_name, category, bio, metro_slug, price_min, vendor_packages(name, price, inclusions), testimonials(body)"
+      "business_name, category, bio, metro_slug, price_min, vendor_packages(name, price, inclusions), vendor_addons(name, price), testimonials(body)"
     )
     .eq("id", vendorId)
     .single();
@@ -27,6 +27,7 @@ export async function refreshVendorEmbedding(vendorId: string) {
     ...v.vendor_packages.map(
       (p) => `Package ${p.name} $${p.price}: ${p.inclusions.join(", ")}`
     ),
+    ...v.vendor_addons.map((a) => `Add-on ${a.name} +$${a.price}`),
     ...v.testimonials.slice(0, 5).map((t) => `Review: ${t.body}`),
   ]
     .filter(Boolean)

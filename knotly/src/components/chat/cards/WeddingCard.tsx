@@ -1,5 +1,5 @@
 // src/components/chat/cards/WeddingCard.tsx
-// The couple's saved plan, shown in the workspace's "My wedding" tab.
+// The couple's saved plan, shown in the workspace's "My Wedding" tab.
 type Wedding = {
   partner_names?: string | null;
   wedding_date?: string | null;

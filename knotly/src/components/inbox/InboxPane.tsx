@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { MailItem, Side } from "@/lib/mailbox";
 import { groupConversations, mailCounts, type MailView } from "@/lib/mail-threads";
-import { MarkRead, ReplyBox, SendDraftButton } from "./ThreadActions";
+import { DraftReview, MarkRead, ReplyBox } from "./ThreadActions";
 
 type ThreadItem = MailItem & { mine: boolean };
 const AGENT = new Set(["couple_agent", "vendor_agent"]);
@@ -16,7 +16,7 @@ const when = (iso: string) => {
     : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 };
 
-export default function InboxPane({ onChange }: { onChange?: () => void }) {
+export default function InboxPane({ onChange, refreshKey = 0 }: { onChange?: () => void; refreshKey?: number }) {
   const [folder, setFolder] = useState<MailView>("messages");
   const [threadId, setThreadId] = useState<string | null>(null);
   const [list, setList] = useState<{ side: Side; items: MailItem[] } | null>(null);
@@ -43,7 +43,7 @@ export default function InboxPane({ onChange }: { onChange?: () => void }) {
     return () => {
       off = true;
     };
-  }, [version]);
+  }, [version, refreshKey]);
 
   useEffect(() => {
     if (!threadId) return;
@@ -54,7 +54,7 @@ export default function InboxPane({ onChange }: { onChange?: () => void }) {
     return () => {
       off = true;
     };
-  }, [threadId, version]);
+  }, [threadId, version, refreshKey]);
 
   if (error) return <p className="p-4 text-sm text-red-600">{error}</p>;
   if (!list) return <p className="p-4 text-sm text-gray-500">Loading your inbox…</p>;
@@ -63,8 +63,8 @@ export default function InboxPane({ onChange }: { onChange?: () => void }) {
   const counts = mailCounts(items);
   const folders: { key: MailView; label: string; count: number }[] = [
     { key: "messages", label: "Messages", count: counts.messages },
-    // Vendors never have drafts; for couples these wait for review before going out.
-    ...(list.side === "couple" ? [{ key: "drafts" as const, label: "Drafts", count: counts.drafts }] : []),
+    // The assistant's messages wait here for review before going out (both sides).
+    { key: "drafts", label: "Drafts", count: counts.drafts },
   ];
 
   // One conversation.
@@ -92,6 +92,20 @@ export default function InboxPane({ onChange }: { onChange?: () => void }) {
         <ol className="space-y-3">
           {thread.map((m) => {
             const draft = m.status === "pending_approval";
+            if (draft && m.mine)
+              return (
+                <li key={m.id}>
+                  <DraftReview
+                    id={m.id}
+                    to={counterpart}
+                    subject={m.subject}
+                    body={m.body}
+                    warnings={m.warnings}
+                    draftedAt={m.createdAt}
+                    onDone={refresh}
+                  />
+                </li>
+              );
             return (
               <li
                 key={m.id}
@@ -116,11 +130,6 @@ export default function InboxPane({ onChange }: { onChange?: () => void }) {
                 </div>
                 {m.subject && <p className="font-medium">{m.subject}</p>}
                 <p className="mt-1 whitespace-pre-wrap">{m.body}</p>
-                {draft && m.mine && (
-                  <div className="mt-3">
-                    <SendDraftButton messageId={m.id} onDone={refresh} />
-                  </div>
-                )}
               </li>
             );
           })}
@@ -196,24 +205,29 @@ export default function InboxPane({ onChange }: { onChange?: () => void }) {
 
       {folder === "drafts" &&
         (drafts.length === 0 ? (
-          <Empty>No drafts. When the assistant writes to a vendor for you, it waits here for your review.</Empty>
+          <Empty>
+            {list.side === "vendor"
+              ? "No drafts. Your assistant's replies to couples wait here for your approval."
+              : "No drafts. When the assistant writes to a vendor for you, it waits here for your review."}
+          </Empty>
         ) : (
           <>
-            <p className="text-xs text-gray-500">Nothing here has been sent. Review each message, then tap Send.</p>
+            <p className="text-xs text-gray-500">
+              Nothing here has been sent. Review each {list.side === "vendor" ? "reply" : "message"}, then tap Send.
+            </p>
             <ul className="space-y-3">
               {drafts.map((d) => (
-                <li key={d.id} className="rounded-xl border border-dashed border-amber-300 bg-amber-50/50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/20">
-                  <p className="text-xs text-gray-500">
-                    To {d.counterpart} · drafted {when(d.createdAt)}
-                  </p>
-                  {d.subject && <p className="mt-1 font-medium">{d.subject}</p>}
-                  <p className="mt-1 whitespace-pre-wrap">{d.body}</p>
-                  <div className="mt-3 flex items-center gap-3">
-                    <SendDraftButton messageId={d.id} onDone={refresh} />
-                    <button type="button" onClick={() => open(d.threadId)} className="text-xs underline-offset-2 hover:underline">
-                      Open conversation
-                    </button>
-                  </div>
+                <li key={d.id}>
+                  <DraftReview
+                    id={d.id}
+                    to={d.counterpart}
+                    subject={d.subject}
+                    body={d.body}
+                    warnings={d.warnings}
+                    draftedAt={d.createdAt}
+                    onOpen={() => open(d.threadId)}
+                    onDone={refresh}
+                  />
                 </li>
               ))}
             </ul>

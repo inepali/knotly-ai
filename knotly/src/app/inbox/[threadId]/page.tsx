@@ -4,7 +4,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { getViewer, isMine, loadMailbox, loadThread } from "@/lib/mailbox";
 import MailShell from "@/components/inbox/MailShell";
 import { mailCounts } from "@/lib/mail-threads";
-import { MarkRead, ReplyBox, SendDraftButton } from "@/components/inbox/ThreadActions";
+import { DraftReview, MarkRead, ReplyBox } from "@/components/inbox/ThreadActions";
 
 const AGENT = new Set(["couple_agent", "vendor_agent"]);
 
@@ -25,7 +25,7 @@ export default async function ThreadPage(props: PageProps<"/inbox/[threadId]">) 
   const subject = messages.find((m) => m.status === "sent")?.subject ?? messages[0].subject;
 
   return (
-    <MailShell counts={mailCounts(all)} showDrafts={viewer.side === "couple"}>
+    <MailShell counts={mailCounts(all)}>
       <MarkRead threadId={threadId} hasNew={messages.some((m) => m.isNew)} />
       <h1 className="text-xl font-semibold">{subject ?? "Conversation"}</h1>
       <p className="mb-4 text-sm text-gray-500">With {counterpart}</p>
@@ -34,6 +34,19 @@ export default async function ThreadPage(props: PageProps<"/inbox/[threadId]">) 
         {messages.map((m) => {
           const mine = isMine(m.sender, viewer.side);
           const draft = m.status === "pending_approval";
+          if (draft && mine)
+            return (
+              <li key={m.id}>
+                <DraftReview
+                  id={m.id}
+                  to={counterpart}
+                  subject={m.subject}
+                  body={m.body}
+                  warnings={m.warnings}
+                  draftedAt={m.createdAt}
+                />
+              </li>
+            );
           return (
             <li
               key={m.id}
@@ -58,11 +71,6 @@ export default async function ThreadPage(props: PageProps<"/inbox/[threadId]">) 
               </div>
               {m.subject && <p className="mb-1 font-medium">{m.subject}</p>}
               <p className="whitespace-pre-wrap text-sm">{m.body}</p>
-              {draft && mine && (
-                <div className="mt-3">
-                  <SendDraftButton messageId={m.id} />
-                </div>
-              )}
             </li>
           );
         })}

@@ -5,7 +5,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { getViewer, loadMailbox } from "@/lib/mailbox";
 import { groupConversations, mailCounts, type MailView } from "@/lib/mail-threads";
 import MailShell, { when } from "@/components/inbox/MailShell";
-import { SendDraftButton } from "@/components/inbox/ThreadActions";
+import { DraftReview } from "@/components/inbox/ThreadActions";
 
 const empty = "rounded-xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-gray-700";
 
@@ -23,7 +23,7 @@ export default async function InboxPage(props: PageProps<"/inbox">) {
   const drafts = items.filter((i) => i.folder === "drafts");
 
   return (
-    <MailShell active={folder} counts={mailCounts(items)} showDrafts={viewer.side === "couple"}>
+    <MailShell active={folder} counts={mailCounts(items)}>
       <h1 className="mb-3 text-xl font-semibold">{folder === "drafts" ? "Drafts" : "Messages"}</h1>
 
       {folder === "messages" &&
@@ -69,24 +69,30 @@ export default async function InboxPage(props: PageProps<"/inbox">) {
 
       {folder === "drafts" &&
         (drafts.length === 0 ? (
-          <p className={empty}>No drafts. When the assistant writes to a vendor for you, it waits here for your review.</p>
+          <p className={empty}>
+            {viewer.side === "vendor"
+              ? "No drafts. Your assistant's replies to couples wait here for your approval."
+              : "No drafts. When the assistant writes to a vendor for you, it waits here for your review."}
+          </p>
         ) : (
           <>
-            <p className="mb-3 text-sm text-gray-500">Nothing here has been sent. Review each message, then tap Send.</p>
+            <p className="mb-3 text-sm text-gray-500">
+              Nothing here has been sent. Review each {viewer.side === "vendor" ? "reply" : "message"}, then tap Send.
+            </p>
             <ul className="space-y-3">
               {drafts.map((d) => (
-                <li key={d.id} className="rounded-xl border border-dashed border-amber-300 bg-amber-50/50 p-4 dark:border-amber-800 dark:bg-amber-950/20">
-                  <p className="text-xs text-gray-500">
-                    To {d.counterpart} · drafted {when(d.createdAt)}
-                  </p>
-                  {d.subject && <p className="mt-1 font-medium">{d.subject}</p>}
-                  <p className="mt-1 whitespace-pre-wrap text-sm">{d.body}</p>
-                  <div className="mt-3 flex items-center gap-4">
-                    <SendDraftButton messageId={d.id} />
-                    <Link href={`/inbox/${d.threadId}`} className="text-sm underline-offset-2 hover:underline">
-                      Open conversation
-                    </Link>
-                  </div>
+                <li key={d.id} className="space-y-1">
+                  <DraftReview
+                    id={d.id}
+                    to={d.counterpart}
+                    subject={d.subject}
+                    body={d.body}
+                    warnings={d.warnings}
+                    draftedAt={d.createdAt}
+                  />
+                  <Link href={`/inbox/${d.threadId}`} className="text-xs text-gray-500 underline-offset-2 hover:underline">
+                    Open conversation
+                  </Link>
                 </li>
               ))}
             </ul>

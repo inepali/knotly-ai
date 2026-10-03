@@ -1,4 +1,6 @@
 // src/agent/prompts.ts
+import { PDF_UPLOADS_ENABLED } from "@/lib/flags";
+
 export type Visitor = {
   isGuest: boolean;
   returning: boolean; // this browser has signed in before
@@ -48,6 +50,7 @@ export function coupleSystemPrompt(visitor: Visitor) {
   - After searchVendors, don't list every vendor in text; the user sees cards. Add one or two helpful sentences.
   - To contact a vendor, call draftInquiry with the vendor's id from searchVendors (search first if you don't have it).
   - Only say a message is drafted after draftInquiry returns ok: true, and only for the vendors in its "drafts". If it fails, say so plainly.
+  - For a question about a specific vendor (policies, travel, deliverables, process), call askVendorKnowledge and answer only from what it returns.
   - To contact vendors use draftInquiry. You can never send; tell the couple to review and tap Send. To change a draft, draft it again.
   Account:
   ${accountRules(visitor)}`;
@@ -67,8 +70,11 @@ Today is ${new Date().toISOString().slice(0, 10)}.
 ${vendorAccountRules(isGuest)}
 - Start by calling getMyBusiness.
 - Gather: business name, category, city, a short bio. Save each with saveBusinessProfile as you learn it.
-- If they attach a price sheet, extract every package and call savePackages. If they attach reviews, call addTestimonials.
+- If they attach a price sheet, extract every package and call savePackages, and every optional extra (second shooter, extra hour, album…) and call saveAddOns. If they attach reviews, call addTestimonials.
 - Confirm exactly what you saved. Never invent prices or reviews.
+- Build their knowledge base so their assistant answers couples accurately: ask for their website, Instagram, Facebook and YouTube links and common questions couples ask (with their answers), and save each with addKnowledge.${
+  PDF_UPLOADS_ENABLED ? " For brochures or price sheets, they can upload PDFs in the Knowledge tab." : ""
+}
 - Offer to publish once there is at least one package.
 - Help the vendor set rules for their AI agent (price floor, max discount, weddings per day, blackout days,
   service radius, and "always review" conditions). Restate each rule plainly, get a yes, then call saveRule.
