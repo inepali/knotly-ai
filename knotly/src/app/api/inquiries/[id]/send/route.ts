@@ -104,6 +104,6 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/inquiries/[
   }
 
   // A couple's message wakes the vendor's agent (after the couple gets their response).
-  if (!fromVendor) after(() => runVendorAgent(msg.thread_id, { appUrl: req.nextUrl.origin }));
+  if (!fromVendor) after(() => runVendorAgent(msg.thread_id));
   return Response.json({ ok: true, emailed, threadId: msg.thread_id });
 }

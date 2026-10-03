@@ -20,7 +20,7 @@ export const REASONS: Record<string, string> = {
   human_claim: "The reply claimed to be a person",
   date_unavailable: "The date isn't open on your calendar",
   invalid_package: "The estimate didn't match a real package",
-  custom_add_ons: "The couple asked for something custom",
+  custom_add_ons: "The estimate includes an add-on you don't offer",
   price_floor: "The estimate is below your price floor",
   discount_needs_level_3: "Discounts need autonomy level 3",
   max_discount: "The discount is above your maximum",
@@ -52,7 +52,8 @@ export function gate(d: Decision, ctx: VendorCtx, priced: Priced | null) {
 
   if (d.responseType === "quote") {
     if (!priced) v.push("invalid_package");
-    if (d.quote?.addOns.length) v.push("custom_add_ons");
+    // Add-ons must come from the vendor's own list (vendor_addons).
+    if (d.quote?.addOnIds.some((id) => !ctx.addOns.some((a) => a.id === id))) v.push("custom_add_ons");
     const floor = find("price_floor");
     if (priced && floor && priced.total < floor.amount) v.push("price_floor");
     const pct = d.quote?.discountPercent ?? 0;

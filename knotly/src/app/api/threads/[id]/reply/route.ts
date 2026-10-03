@@ -93,7 +93,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/threads/[id
   }
 
   // A couple's reply wakes the vendor's agent to draft the next response for review.
-  if (side === "couple") after(() => runVendorAgent(id, { appUrl: req.nextUrl.origin }));
+  if (side === "couple") after(() => runVendorAgent(id));
 
   return Response.json({ ok: true, emailed });
 }
