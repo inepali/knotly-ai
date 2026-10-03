@@ -81,7 +81,7 @@ export default function InboxPane({ onChange, refreshKey = 0 }: { onChange?: () 
             setThreadId(null);
             setThread(null);
           }}
-          className="text-sm text-gray-600 underline-offset-2 hover:underline dark:text-gray-400"
+          className="text-sm text-gray-600 underline-offset-2 hover:underline"
         >
           ← Back to {folder === "drafts" ? "drafts" : "messages"}
         </button>
@@ -111,18 +111,18 @@ export default function InboxPane({ onChange, refreshKey = 0 }: { onChange?: () 
                 key={m.id}
                 className={`rounded-xl border p-3 text-sm ${
                   draft
-                    ? "border-dashed border-amber-300 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20"
+                    ? "border-dashed border-amber-300 bg-amber-50/50"
                     : m.mine
-                      ? "border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900"
-                      : "border-gray-200 dark:border-gray-800"
+                      ? "border-gray-200 bg-gray-50"
+                      : "border-gray-200"
                 }`}
               >
                 <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
                   <span className="font-medium">
                     {m.mine ? "You" : counterpart}
                     {AGENT.has(m.sender) && <span className="font-normal text-gray-500"> · with Knotly assistant</span>}
-                    {draft && <span className="ml-2 rounded-full bg-amber-100 px-2 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">Draft</span>}
-                    {m.isNew && <span className="ml-2 rounded-full bg-black px-2 text-xs text-white dark:bg-white dark:text-black">New</span>}
+                    {draft && <span className="ml-2 rounded-full bg-amber-100 px-2 text-xs text-amber-900">Draft</span>}
+                    {m.isNew && <span className="ml-2 rounded-lg bg-cyan-500 font-semibold hover:bg-cyan-600 px-2 text-xs text-white">New</span>}
                   </span>
                   <time dateTime={m.createdAt} className="text-xs text-gray-500">
                     {new Date(m.createdAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
@@ -148,7 +148,7 @@ export default function InboxPane({ onChange, refreshKey = 0 }: { onChange?: () 
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-1 rounded-lg bg-gray-100 p-1 text-sm dark:bg-gray-900" role="tablist" aria-label="Folders">
+      <div className="flex gap-1 rounded-lg bg-gray-100 p-1 text-sm" role="tablist" aria-label="Folders">
         {folders.map((f) => (
           <button
             key={f.key}
@@ -156,7 +156,7 @@ export default function InboxPane({ onChange, refreshKey = 0 }: { onChange?: () 
             role="tab"
             aria-selected={folder === f.key}
             onClick={() => setFolder(f.key)}
-            className={`flex-1 rounded-md px-3 py-1 ${folder === f.key ? "bg-white font-medium shadow-sm dark:bg-gray-800" : "text-gray-500"}`}
+            className={`flex-1 rounded-md px-3 py-1 ${folder === f.key ? "bg-white font-medium shadow-sm" : "text-gray-500"}`}
           >
             {f.label}
             {f.count > 0 && <span className="ml-1 text-xs">({f.count})</span>}
@@ -168,22 +168,22 @@ export default function InboxPane({ onChange, refreshKey = 0 }: { onChange?: () 
         (conversations.length === 0 ? (
           <Empty>No conversations yet. Messages you send and replies you get will show up here.</Empty>
         ) : (
-          <ul className="divide-y divide-gray-200 overflow-hidden rounded-xl border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+          <ul className="divide-y divide-gray-200 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-900/5">
             {conversations.map((c) => (
               <li key={c.threadId}>
                 <button
                   type="button"
                   onClick={() => open(c.threadId)}
-                  className={`block w-full px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-900 ${c.unread ? "font-semibold" : ""}`}
+                  className={`block w-full px-3 py-2.5 text-left hover:bg-gray-50 ${c.unread ? "font-semibold" : ""}`}
                 >
                   <span className="flex items-baseline justify-between gap-3 text-sm">
                     <span className="truncate">
                       {c.counterpart}
                       {c.unread > 0 && (
-                        <span className="ml-2 rounded-full bg-black px-1.5 text-xs text-white dark:bg-white dark:text-black">{c.unread} new</span>
+                        <span className="ml-2 rounded-lg bg-cyan-500 font-semibold hover:bg-cyan-600 px-1.5 text-xs text-white">{c.unread} new</span>
                       )}
                       {c.drafts > 0 && (
-                        <span className="ml-2 rounded-full bg-amber-100 px-1.5 text-xs font-normal text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                        <span className="ml-2 rounded-full bg-amber-100 px-1.5 text-xs font-normal text-amber-900">
                           {c.drafts} draft{c.drafts === 1 ? "" : "s"}
                         </span>
                       )}
@@ -239,7 +239,7 @@ export default function InboxPane({ onChange, refreshKey = 0 }: { onChange?: () 
 
 function Empty({ children }: { children: React.ReactNode }) {
   return (
-    <p className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-gray-700">
+    <p className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
       {children}
     </p>
   );

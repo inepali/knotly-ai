@@ -27,7 +27,7 @@ export default function VendorDetailsCard({
       <div>
         <p className="text-xs uppercase tracking-wide text-gray-500">{v.category.replace("_", " & ")}</p>
         <h3 className="text-lg font-semibold">{v.business_name}</h3>
-        {v.bio && <p className="mt-1 text-gray-700 dark:text-gray-300">{v.bio}</p>}
+        {v.bio && <p className="mt-1 text-gray-700">{v.bio}</p>}
       </div>
 
       <VendorOffer
@@ -42,7 +42,7 @@ export default function VendorDetailsCard({
           <h4 className="mb-2 text-sm font-medium text-gray-500">Reviews</h4>
           <ul className="space-y-2">
             {v.testimonials.map((t, i) => (
-              <li key={i} className="border-l-2 border-gray-200 pl-3 dark:border-gray-800">
+              <li key={i} className="border-l-2 border-gray-200 pl-3">
                 <p>“{t.body}”</p>
                 <p className="mt-1 text-xs text-gray-500">
                   {t.author_name}
@@ -56,7 +56,7 @@ export default function VendorDetailsCard({
       )}
 
       <button
-        className="rounded-full border border-gray-300 px-4 py-1.5 dark:border-gray-700"
+        className="rounded-lg border border-gray-300 bg-white text-gray-700 transition-colors hover:border-gray-400 px-4 py-1.5"
         onClick={() => onAsk(`I'd like a quote from ${v.business_name} (vendorId ${v.id})`)}
       >
         Request a custom quote

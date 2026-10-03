@@ -3,6 +3,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { fieldClasses } from "@/components/ui/fields";
 import { PDF_UPLOADS_ENABLED } from "@/lib/flags";
 
 type Source = {
@@ -36,10 +37,9 @@ const KIND_LABEL: Record<Source["kind"], string> = {
   pdf: "PDF",
 };
 
-const field =
-  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950";
+const field = fieldClasses;
 const button =
-  "rounded-full bg-black px-4 py-1.5 text-sm text-white disabled:opacity-40 dark:bg-white dark:text-black";
+  "rounded-lg bg-cyan-500 font-semibold hover:bg-cyan-600 px-4 py-1.5 text-sm text-white disabled:opacity-40";
 
 async function api(url: string, init?: RequestInit) {
   const res = await fetch(url, init);
@@ -151,7 +151,7 @@ export default function KnowledgePane() {
     );
   if (!hasListing)
     return (
-      <p className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-gray-700">
+      <p className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
         Create your business profile first (name and what you do), then add your
         links and FAQs here.
       </p>
@@ -159,7 +159,7 @@ export default function KnowledgePane() {
 
   return (
     <div className="space-y-6 text-sm">
-      <p className="text-gray-600 dark:text-gray-400">
+      <p className="text-gray-600">
         Your assistant answers couples from what you add here, so the more it
         knows, the more accurate it gets. Prices always come from your packages.
       </p>
@@ -253,7 +253,7 @@ export default function KnowledgePane() {
         {items.length === 0 ? (
           <p className="text-gray-500">Nothing yet.</p>
         ) : (
-          <ul className="divide-y divide-gray-200 rounded-xl border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+          <ul className="divide-y divide-gray-200 rounded-2xl bg-white shadow-sm ring-1 ring-gray-900/5">
             {items.map((s) => (
               <li
                 key={s.id}
@@ -261,7 +261,7 @@ export default function KnowledgePane() {
               >
                 <div className="min-w-0">
                   <p className="truncate">
-                    <span className="mr-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs dark:bg-gray-900">
+                    <span className="mr-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs">
                       {KIND_LABEL[s.kind]}
                     </span>
                     {s.kind === "faq" ? s.question : s.title}
@@ -283,7 +283,7 @@ export default function KnowledgePane() {
                       </span>
                     )}
                     {s.status === "ready" && (
-                      <span className="text-emerald-700 dark:text-emerald-400">
+                      <span className="text-emerald-700">
                         Ready
                         {s.kind === "website" && s.vendor_knowledge_pages?.length
                           ? ` · ${s.vendor_knowledge_pages.filter((p) => p.status === "ready").length} of ${s.vendor_knowledge_pages.length} pages read`
@@ -294,7 +294,7 @@ export default function KnowledgePane() {
                       </span>
                     )}
                     {s.status === "ready" && s.error && (
-                      <span className="block text-amber-700 dark:text-amber-400">{s.error}</span>
+                      <span className="block text-amber-700">{s.error}</span>
                     )}
                     {s.status === "error" && (
                       <span className="text-red-600">

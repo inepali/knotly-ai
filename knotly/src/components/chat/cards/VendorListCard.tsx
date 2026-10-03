@@ -39,11 +39,11 @@ export default function VendorListCard({
         {data.vendors.map((v) => (
           <article
             key={v.id}
-            className="flex h-full flex-col rounded-2xl border border-gray-200 p-4 shadow-sm dark:border-gray-800"
+            className="flex h-full flex-col rounded-3xl bg-white p-5 shadow-lg shadow-gray-900/5 ring-1 ring-gray-900/5"
           >
             <div className="flex items-start justify-between gap-2">
               <h4 className="font-semibold leading-snug">{v.name}</h4>
-              <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-gray-900 dark:text-gray-400">
+              <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
                 {v.match}% match
               </span>
             </div>
@@ -54,16 +54,16 @@ export default function VendorListCard({
               {v.rating ? `${v.rating}★ (${v.reviews})` : "New"}
               {v.miles != null && ` · ${v.miles} mi away`}
             </p>
-            <p className="mt-2 line-clamp-3 text-sm text-gray-700 dark:text-gray-300">{v.blurb}</p>
+            <p className="mt-2 line-clamp-3 text-sm text-gray-700">{v.blurb}</p>
             <div className="mt-auto flex gap-2 pt-4">
               <button
-                className="flex-1 rounded-full border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-700"
+                className="flex-1 rounded-lg border border-gray-300 bg-white text-gray-700 transition-colors hover:border-gray-400 px-3 py-1.5 text-sm"
                 onClick={() => onAsk(`Tell me more about ${v.name} (vendorId ${v.id})`)}
               >
                 Details
               </button>
               <button
-                className="flex-1 rounded-full bg-black px-3 py-1.5 text-sm text-white dark:bg-white dark:text-black"
+                className="flex-1 rounded-lg bg-cyan-500 font-semibold hover:bg-cyan-600 px-3 py-1.5 text-sm text-white"
                 onClick={() => onAsk(`I'd like a quote from ${v.name} (vendorId ${v.id})`)}
               >
                 Request quote

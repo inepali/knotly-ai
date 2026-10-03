@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { fieldClasses } from "@/components/ui/fields";
 
 // Each action calls `onDone` when it finishes; by default that re-renders the page
 // (the /inbox pages), while the chat's Inbox tab passes its own refetch.
@@ -52,13 +53,13 @@ export function ReplyBox({ threadId, to, onDone }: { threadId: string; to: strin
         onChange={(e) => setBody(e.target.value)}
         rows={4}
         placeholder={`Reply to ${to}…`}
-        className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:border-gray-500 dark:border-gray-700 dark:bg-gray-950"
+        className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:border-gray-500"
       />
       <div className="flex items-center justify-between gap-4">
         <p className="text-xs text-gray-500">Sent messages are kept as a record and can&apos;t be edited.</p>
         <button
           disabled={busy || !body.trim()}
-          className="rounded-full bg-black px-5 py-2 text-sm text-white disabled:opacity-40 dark:bg-white dark:text-black"
+          className="rounded-lg bg-cyan-500 font-semibold hover:bg-cyan-600 px-5 py-2 text-sm text-white disabled:opacity-40"
         >
           {busy ? "Sending…" : "Send reply"}
         </button>
@@ -95,8 +96,7 @@ export function DraftReview({
   const [draftBody, setBody] = useState(body);
   const [state, setState] = useState<"idle" | "sending" | "error">("idle");
   const [error, setError] = useState("");
-  const field =
-    "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950";
+  const field = fieldClasses;
 
   async function send() {
     setState("sending");
@@ -117,14 +117,14 @@ export function DraftReview({
   }
 
   return (
-    <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/20">
+    <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/50 p-3 text-sm">
       <p className="text-xs text-gray-500">
         Draft to {to} · {new Date(draftedAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })} ·{" "}
         <strong>not sent</strong>
       </p>
 
       {warnings.length > 0 && (
-        <ul className="mt-2 list-inside list-disc rounded-lg bg-amber-100 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        <ul className="mt-2 list-inside list-disc rounded-lg bg-amber-100 px-3 py-2 text-xs text-amber-900">
           {warnings.map((w) => (
             <li key={w}>{w}</li>
           ))}
@@ -148,7 +148,7 @@ export function DraftReview({
           type="button"
           disabled={state === "sending" || (editing && (!draftSubject.trim() || !draftBody.trim()))}
           onClick={send}
-          className="rounded-full bg-black px-4 py-1.5 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+          className="rounded-lg bg-cyan-500 font-semibold hover:bg-cyan-600 px-4 py-1.5 text-white disabled:opacity-50"
         >
           {state === "sending" ? "Sending…" : state === "error" ? "Retry" : editing ? "Send edited" : "Approve & send"}
         </button>

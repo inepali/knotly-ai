@@ -1,6 +1,7 @@
 // src/components/chat/cards/AccountCard.tsx
 "use client";
 import { useState } from "react";
+import { fieldClasses } from "@/components/ui/fields";
 
 // signup → code: create an account.  signin: password sign-in.
 // forgot → reset: email/phone a code, then set a new password (which also signs in).
@@ -122,13 +123,12 @@ export default function AccountCard({
   }
 
   if (mode === "done")
-    return <p className="text-sm text-emerald-700 dark:text-emerald-400">✓ You&apos;re signed in</p>;
+    return <p className="text-sm text-emerald-700">✓ You&apos;re signed in</p>;
 
-  const field =
-    "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-950";
+  const field = fieldClasses;
   const tab = (m: Method) =>
     `flex-1 rounded-md px-3 py-1 text-sm ${
-      method === m ? "bg-black text-white dark:bg-white dark:text-black" : "text-gray-600 dark:text-gray-400"
+      method === m ? "bg-cyan-500 text-white" : "text-gray-600"
     }`;
   const link = "underline disabled:opacity-50";
   const askIdentifier = mode === "signup" || mode === "signin" || mode === "forgot";
@@ -137,10 +137,10 @@ export default function AccountCard({
   return (
     <form
       onSubmit={submit}
-      className="my-2 max-w-sm space-y-3 rounded-xl border border-gray-300 p-4 text-left dark:border-gray-700"
+      className="my-2 max-w-sm space-y-4 rounded-3xl bg-white p-6 text-left shadow-xl shadow-gray-900/10 ring-1 ring-gray-900/5"
     >
-      <p className="font-medium">{TITLES[mode]}</p>
-      <p className="text-sm text-gray-600 dark:text-gray-400">
+      <p className="text-lg font-medium tracking-tight text-gray-900">{TITLES[mode]}</p>
+      <p className="text-sm text-gray-600">
         {notice ||
           (mode === "forgot"
             ? "Enter the email or phone on your account and we'll send you a code."
@@ -165,8 +165,8 @@ export default function AccountCard({
               onClick={() => setRole(value)}
               className={`rounded-lg border px-3 py-2 text-sm ${
                 role === value
-                  ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
-                  : "border-gray-300 text-gray-700 dark:border-gray-700 dark:text-gray-300"
+                  ? "border-cyan-500 bg-cyan-500 text-white"
+                  : "border-gray-300 text-gray-700"
               }`}
             >
               {label}
@@ -177,7 +177,7 @@ export default function AccountCard({
 
       {askIdentifier && (
         <>
-          <div className="flex gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-900">
+          <div className="flex gap-1 rounded-lg bg-gray-100 p-1">
             <button type="button" className={tab("email")} onClick={() => setMethod("email")}>
               Email
             </button>
@@ -243,7 +243,7 @@ export default function AccountCard({
       )}
 
       {mode === "signup" && (
-        <label className="flex gap-2 text-xs text-gray-600 dark:text-gray-400">
+        <label className="flex gap-2 text-xs text-gray-600">
           <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
           I agree to Knotly&apos;s Terms and Privacy Policy, including AI-assisted messaging.
         </label>
@@ -251,7 +251,7 @@ export default function AccountCard({
 
       <button
         disabled={busy}
-        className="w-full rounded-lg bg-black px-3 py-2 text-white disabled:opacity-50 dark:bg-white dark:text-black"
+        className="w-full rounded-lg bg-cyan-500 font-semibold hover:bg-cyan-600 px-3 py-2 text-white disabled:opacity-50"
       >
         {busy ? "Please wait…" : SUBMIT[mode]}
       </button>

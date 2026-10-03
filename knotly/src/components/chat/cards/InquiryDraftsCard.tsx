@@ -30,7 +30,7 @@ export default function InquiryDraftsCard({
           <button
             disabled={state[d.id] === "sending" || state[d.id] === "sent"}
             onClick={() => send(d.id)}
-            className="mt-3 rounded-full bg-black px-4 py-1.5 text-sm text-white disabled:opacity-50"
+            className="mt-3 rounded-lg bg-cyan-500 font-semibold hover:bg-cyan-600 px-4 py-1.5 text-sm text-white disabled:opacity-50"
           >
             {{ sending: "Sending…", sent: "Sent ✓", error: "Retry" }[
               state[d.id] as string

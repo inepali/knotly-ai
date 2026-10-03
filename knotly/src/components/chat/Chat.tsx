@@ -6,6 +6,7 @@ import { useChat } from "@ai-sdk/react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { Logo } from "@/components/ui/Logo";
 import AccountCard, { HAS_ACCOUNT_KEY, type Role } from "./cards/AccountCard";
 import {
   BUSINESS,
@@ -25,7 +26,7 @@ const coupleActions: Action[] = [
   { label: "Register", prompt: "I'd like to create an account.", guestOnly: true },
   { label: "Sign in", prompt: "I already have an account. Please sign me in.", guestOnly: true },
   { label: "I'm a wedding vendor", prompt: "I run a wedding business and want to list it on Knotly.", guestOnly: true },
-  { label: "Vendor Listing", href: "/vendors" },
+  { label: "Find vendors", href: "/search" },
   { label: "Plan my budget", prompt: "Help me plan a budget for my wedding." },
   { label: "Find a photographer", prompt: "Find me a wedding photographer near Charlotte." },
 ];
@@ -54,8 +55,9 @@ async function countMail(role: Role): Promise<MailCounts> {
 // Check for new mail this often while the page is visible.
 const MAIL_POLL_MS = 20_000;
 
+// Pocket's outline button, used for the suggestion pills.
 const pill =
-  "rounded-full border border-gray-300 px-5 py-2.5 text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-900";
+  "rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 transition-colors hover:border-gray-400 active:bg-gray-100";
 
 export default function Chat() {
   // Set when the couple agent hands a guest to vendor onboarding (switchToVendor);
@@ -212,7 +214,7 @@ export default function Chat() {
       type="button"
       onClick={() => open(INBOX)}
       aria-label={`Messages: ${mail.unread} unread${mail.review ? `, ${mail.review} to review` : ""}`}
-      className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 px-3 py-1 text-sm hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-900"
+      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 transition-colors hover:border-gray-400"
     >
       <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <rect x="3" y="5" width="18" height="14" rx="2" />
@@ -223,7 +225,7 @@ export default function Chat() {
         <span className="min-w-5 rounded-full bg-red-600 px-1.5 text-center text-xs font-semibold text-white">{mail.unread}</span>
       )}
       {mail.review > 0 && (
-        <span className="rounded-full bg-amber-100 px-1.5 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        <span className="rounded-full bg-amber-100 px-1.5 text-xs text-amber-900">
           {mail.review} to review
         </span>
       )}
@@ -242,7 +244,7 @@ export default function Chat() {
 
   const composer = (
     <form
-      className="relative rounded-3xl border border-gray-300 bg-white shadow-sm focus-within:border-gray-400 dark:border-gray-700 dark:bg-gray-950"
+      className="relative rounded-2xl bg-white shadow-xl shadow-gray-900/5 ring-1 ring-gray-900/10 focus-within:ring-2 focus-within:ring-cyan-500"
       onSubmit={(e) => {
         e.preventDefault();
         send(input);
@@ -272,7 +274,7 @@ export default function Chat() {
         type="submit"
         disabled={busy || !input.trim()}
         aria-label="Send"
-        className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-black text-white transition disabled:bg-gray-200 disabled:text-gray-500 dark:bg-white dark:text-black dark:disabled:bg-gray-800"
+        className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-500 font-semibold hover:bg-cyan-600 text-white transition disabled:bg-gray-200 disabled:text-gray-500"
       >
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 19V5M5 12l7-7 7 7" />
@@ -287,11 +289,14 @@ export default function Chat() {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center px-4">
         <div className="w-full max-w-3xl">
-          <div className="mb-4 flex items-center justify-end gap-3">
-            {messagesButton}
-            {accountBar}
+          <div className="mb-10 flex items-center justify-between gap-3">
+            <Logo />
+            <div className="flex items-center gap-3">
+              {messagesButton}
+              <div className="hidden sm:block">{accountBar}</div>
+            </div>
           </div>
-          <h1 className="mb-8 text-center text-2xl font-semibold">
+          <h1 className="mb-8 text-center text-3xl font-medium tracking-tight text-gray-900 sm:text-4xl">
             {role === "vendor"
               ? "Welcome! Let's get your business in front of couples."
               : "Congratulations on your engagement! What can I help with?"}
@@ -328,7 +333,9 @@ export default function Chat() {
                   <p
                     key={i}
                     className={`inline-block max-w-[90%] whitespace-pre-wrap rounded-2xl px-4 py-2 text-left ${
-                      m.role === "user" ? "bg-black text-white dark:bg-white dark:text-black" : "bg-gray-100 dark:bg-gray-900"
+                      m.role === "user"
+                        ? "bg-cyan-500 text-white"
+                        : "bg-white text-gray-900 shadow-sm ring-1 ring-gray-900/5"
                     }`}
                   >
                     {part.text}
@@ -377,10 +384,10 @@ export default function Chat() {
                     key={i}
                     type="button"
                     onClick={() => open(part.toolCallId)}
-                    className={`my-1 mr-2 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${
+                    className={`my-1 mr-2 inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-1 text-xs ${
                       part.toolCallId === activeId
-                        ? "border-black dark:border-white"
-                        : "border-gray-300 text-gray-700 dark:border-gray-700 dark:text-gray-300"
+                        ? "border-cyan-500"
+                        : "border-gray-300 text-gray-700"
                     }`}
                   >
                     ✓ {summarize(tool, part.output)} <span aria-hidden>→</span>
@@ -394,7 +401,7 @@ export default function Chat() {
                     key={i}
                     type="button"
                     onClick={() => open(BUSINESS)}
-                    className="my-1 mr-2 inline-flex items-center gap-2 rounded-full border border-gray-300 px-3 py-1 text-xs text-gray-700 dark:border-gray-700 dark:text-gray-300"
+                    className="my-1 mr-2 inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1 text-xs text-gray-700"
                   >
                     ✓ {chipLabel(tool, done)} <span aria-hidden>→</span>
                   </button>
@@ -403,7 +410,7 @@ export default function Chat() {
               return (
                 <span
                   key={i}
-                  className="mr-2 inline-block rounded bg-emerald-50 px-2 py-0.5 text-xs text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                  className="mr-2 inline-block rounded bg-emerald-50 px-2 py-0.5 text-xs text-emerald-800"
                 >
                   {chipLabel(tool, done)}
                 </span>
@@ -420,12 +427,12 @@ export default function Chat() {
 
   return (
     <div className="flex h-dvh flex-col">
-      <header className="flex items-center justify-between gap-4 border-b border-gray-200 px-4 py-2 dark:border-gray-800">
-        <Link href="/chat" className="font-semibold">
-          Knotly
+      <header className="flex items-center justify-between gap-4 border-b border-gray-200 bg-white px-4 py-3">
+        <Link href="/chat" aria-label="Knotly">
+          <Logo />
         </Link>
         {/* Mobile: switch between the two panes. */}
-        <div className="flex gap-1 rounded-lg bg-gray-100 p-1 text-sm lg:hidden dark:bg-gray-900">
+        <div className="flex gap-1 rounded-lg bg-gray-100 p-1 text-sm lg:hidden">
           {(["chat", "workspace"] as const).map((v) => (
             <button
               key={v}
@@ -434,7 +441,7 @@ export default function Chat() {
                 setMobileView(v);
                 if (v === "workspace") setSeen(artifacts.length);
               }}
-              className={`rounded-md px-3 py-1 ${mobileView === v ? "bg-white shadow-sm dark:bg-gray-800" : "text-gray-500"}`}
+              className={`rounded-md px-3 py-1 ${mobileView === v ? "bg-white shadow-sm" : "text-gray-500"}`}
             >
               {v === "chat" ? "Chat" : "Workspace"}
               {v === "workspace" && unseen + mail.unread > 0 && mobileView === "chat" && (
@@ -452,7 +459,7 @@ export default function Chat() {
       <div className="min-h-0 flex-1 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <div className={`h-full min-h-0 ${mobileView === "chat" ? "" : "hidden"} lg:block`}>{chatPane}</div>
         <aside
-          className={`h-full min-h-0 border-gray-200 lg:block lg:border-l dark:border-gray-800 ${
+          className={`h-full min-h-0 border-gray-200 bg-white lg:block lg:border-l ${
             mobileView === "workspace" ? "" : "hidden"
           }`}
         >

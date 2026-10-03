@@ -7,7 +7,7 @@ import { groupConversations, mailCounts, type MailView } from "@/lib/mail-thread
 import MailShell, { when } from "@/components/inbox/MailShell";
 import { DraftReview } from "@/components/inbox/ThreadActions";
 
-const empty = "rounded-xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500 dark:border-gray-700";
+const empty = "rounded-xl border border-dashed border-gray-300 p-8 text-center text-sm text-gray-500";
 
 export default async function InboxPage(props: PageProps<"/inbox">) {
   const { folder: raw } = await props.searchParams;
@@ -30,24 +30,24 @@ export default async function InboxPage(props: PageProps<"/inbox">) {
         (conversations.length === 0 ? (
           <p className={empty}>No conversations yet. Messages you send and replies you get will show up here.</p>
         ) : (
-          <ul className="divide-y divide-gray-200 overflow-hidden rounded-xl border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+          <ul className="divide-y divide-gray-200 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-900/5">
             {conversations.map((c) => (
               <li key={c.threadId}>
                 <Link
                   href={`/inbox/${c.threadId}`}
-                  className={`grid grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto] items-baseline gap-4 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-900 ${
+                  className={`grid grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto] items-baseline gap-4 px-4 py-3 hover:bg-gray-50 ${
                     c.unread ? "font-semibold" : ""
                   }`}
                 >
                   <span className="truncate">
                     {c.counterpart}
                     {c.unread > 0 && (
-                      <span className="ml-2 rounded-full bg-black px-2 py-0.5 text-xs text-white dark:bg-white dark:text-black">{c.unread} new</span>
+                      <span className="ml-2 rounded-lg bg-cyan-500 font-semibold hover:bg-cyan-600 px-2 py-0.5 text-xs text-white">{c.unread} new</span>
                     )}
                   </span>
                   <span className="min-w-0 truncate">
                     {c.drafts > 0 && (
-                      <span className="mr-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-normal text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                      <span className="mr-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-normal text-amber-900">
                         {c.drafts} draft{c.drafts === 1 ? "" : "s"}
                       </span>
                     )}

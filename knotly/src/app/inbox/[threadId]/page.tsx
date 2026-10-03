@@ -52,18 +52,18 @@ export default async function ThreadPage(props: PageProps<"/inbox/[threadId]">) 
               key={m.id}
               className={`rounded-xl border p-4 ${
                 draft
-                  ? "border-dashed border-amber-300 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20"
+                  ? "border-dashed border-amber-300 bg-amber-50/50"
                   : mine
-                    ? "border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900"
-                    : "border-gray-200 dark:border-gray-800"
+                    ? "border-gray-200 bg-gray-50"
+                    : "border-gray-200"
               }`}
             >
               <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2 text-sm">
                 <span className="font-medium">
                   {mine ? "You" : counterpart}
                   {AGENT.has(m.sender) && <span className="font-normal text-gray-500"> · written with Knotly assistant</span>}
-                  {draft && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">Draft — not sent</span>}
-                  {m.isNew && <span className="ml-2 rounded-full bg-black px-2 py-0.5 text-xs text-white dark:bg-white dark:text-black">New</span>}
+                  {draft && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">Draft — not sent</span>}
+                  {m.isNew && <span className="ml-2 rounded-lg bg-cyan-500 font-semibold hover:bg-cyan-600 px-2 py-0.5 text-xs text-white">New</span>}
                 </span>
                 <time dateTime={m.createdAt} className="text-xs text-gray-500">
                   {new Date(m.createdAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}

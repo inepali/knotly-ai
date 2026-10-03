@@ -45,7 +45,7 @@ export default function BusinessPane({ refreshKey = 0 }: { refreshKey?: number }
   if (listing === undefined) return <p className="text-sm text-gray-500">Loading your listing…</p>;
   if (listing === null)
     return (
-      <p className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500 dark:border-gray-700">
+      <p className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
         No listing yet. Tell the assistant your business name, what you do and your city to get started.
       </p>
     );
@@ -74,18 +74,18 @@ export default function BusinessPane({ refreshKey = 0 }: { refreshKey?: number }
         <span
           className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs ${
             listing.published
-              ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-              : "bg-gray-100 text-gray-600 dark:bg-gray-900 dark:text-gray-400"
+              ? "bg-emerald-50 text-emerald-800"
+              : "bg-gray-100 text-gray-600"
           }`}
         >
           {listing.published ? "Live — couples can find you" : "Draft — not visible to couples"}
         </span>
       </header>
 
-      {listing.bio && <p className="text-gray-700 dark:text-gray-300">{listing.bio}</p>}
+      {listing.bio && <p className="text-gray-700">{listing.bio}</p>}
 
       {missing.length > 0 && (
-        <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
           Still needed: {missing.join(", ")}. Tell the assistant and it will add them.
         </p>
       )}
@@ -106,7 +106,7 @@ export default function BusinessPane({ refreshKey = 0 }: { refreshKey?: number }
         ) : (
           <ul className="space-y-2">
             {listing.testimonials.slice(0, 5).map((t) => (
-              <li key={t.id} className="border-l-2 border-gray-200 pl-3 dark:border-gray-800">
+              <li key={t.id} className="border-l-2 border-gray-200 pl-3">
                 <p className="line-clamp-3">“{t.body}”</p>
                 <p className="mt-1 text-xs text-gray-500">
                   {t.author_name}

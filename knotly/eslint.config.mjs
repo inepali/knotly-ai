@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Licensed Tailwind Plus templates, kept only as a design reference.
+    "templates/**",
   ]),
 ]);
 
