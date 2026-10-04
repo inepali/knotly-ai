@@ -55,25 +55,38 @@ export function vendorTools({ sb, userId, isGuest }: ToolCtx) {
     ...accountTools({ sb, userId, isGuest }, "vendor"),
 
     addKnowledge: tool({
-      description:
-        `Add to the vendor's knowledge base, which their assistant uses to answer couples: a link (website, Instagram, Facebook, YouTube) or an FAQ.${
-          PDF_UPLOADS_ENABLED ? " For PDFs, tell them to upload in the Knowledge tab." : " PDFs aren't supported yet."
-        }`,
+      description: `Add to the vendor's knowledge base, which their assistant uses to answer couples: a link (website, Instagram, Facebook, YouTube) or an FAQ.${
+        PDF_UPLOADS_ENABLED
+          ? " For PDFs, tell them to upload in the Knowledge tab."
+          : " PDFs aren't supported yet."
+      }`,
       inputSchema: z.object({
         url: z.string().optional().describe("A link to learn from"),
-        question: z.string().optional().describe("FAQ question, in the couple's words"),
-        answer: z.string().optional().describe("FAQ answer, exactly as the vendor gives it"),
+        question: z
+          .string()
+          .optional()
+          .describe("FAQ question, in the couple's words"),
+        answer: z
+          .string()
+          .optional()
+          .describe("FAQ answer, exactly as the vendor gives it"),
       }),
       execute: async ({ url, question, answer }) => {
-        if (!(await getVendor())) return { ok: false, error: "Create the business profile first." };
+        if (!(await getVendor()))
+          return { ok: false, error: "Create the business profile first." };
         let row;
         if (url) {
           const u = parsePublicUrl(url);
-          if (!u) return { ok: false, error: "That isn't a public web address." };
+          if (!u)
+            return { ok: false, error: "That isn't a public web address." };
           row = { kind: kindOfUrl(u), url: u.toString(), title: u.hostname };
         } else if (question && answer) {
           row = { kind: "faq", question, answer, title: question };
-        } else return { ok: false, error: "Give a link, or both a question and an answer." };
+        } else
+          return {
+            ok: false,
+            error: "Give a link, or both a question and an answer.",
+          };
 
         const { data, error } = await sb
           .from("vendor_knowledge")
@@ -82,7 +95,11 @@ export function vendorTools({ sb, userId, isGuest }: ToolCtx) {
           .single();
         if (error) return { ok: false, error: error.message };
         after(() => ingestKnowledge(data.id)); // reading a page takes a few seconds
-        return { ok: true, added: data.kind, note: "Being learned now; it shows as Ready in the Knowledge tab." };
+        return {
+          ok: true,
+          added: data.kind,
+          note: "Being learned now; it shows as Ready in the Knowledge tab.",
+        };
       },
     }),
 
@@ -235,6 +252,41 @@ export function vendorTools({ sb, userId, isGuest }: ToolCtx) {
       },
     }),
 
+    getAgentStats: tool({
+      description:
+        "How the vendor's AI agent performed in the last 30 days, and whether it has earned more autonomy.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        const [{ data: s }, { data: st }] = await Promise.all([
+          sb
+            .from("vendor_agent_stats")
+            .select("*")
+            .eq("vendor_id", userId)
+            .maybeSingle(),
+          sb
+            .from("vendor_agent_settings")
+            .select("autonomy_level")
+            .eq("vendor_id", userId)
+            .single(),
+        ]);
+        const approved = s?.approved_as_is ?? 0,
+          changed = s?.changed_by_human ?? 0;
+        const approvalRate =
+          approved + changed ? approved / (approved + changed) : null;
+        return {
+          ...s,
+          level: st?.autonomy_level,
+          approvalRate,
+          suggestion:
+            approved >= 20 &&
+            (approvalRate ?? 0) >= 0.9 &&
+            (st?.autonomy_level ?? 0) < 2
+              ? "You approved 90%+ of drafts unchanged. Consider Autopilot (level 2)."
+              : null,
+        };
+      },
+    }),
+
     savePackages: tool({
       description:
         "Save service packages. Extract them from pasted text or an attached price sheet. Whole USD.",
@@ -281,7 +333,8 @@ export function vendorTools({ sb, userId, isGuest }: ToolCtx) {
           .max(20),
       }),
       execute: async ({ addOns }) => {
-        if (!(await getVendor())) return { ok: false, error: "Create the business profile first." };
+        if (!(await getVendor()))
+          return { ok: false, error: "Create the business profile first." };
         const { data, error } = await sb
           .from("vendor_addons")
           .insert(addOns.map((a) => ({ ...a, vendor_id: userId })))

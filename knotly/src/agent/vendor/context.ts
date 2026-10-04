@@ -19,45 +19,52 @@ export async function loadVendorCtx(threadId: string) {
   if (!thread) return null;
   const vid = thread.vendor_id;
 
-  const [vendor, settings, ruleRows, packages, addOns, bookings, msgs, project] =
-    await Promise.all([
-      db
-        .from("vendors")
-        .select("id, business_name, category, bio, metro_slug, price_min")
-        .eq("id", vid)
-        .single(),
-      db
-        .from("vendor_agent_settings")
-        .select("*")
-        .eq("vendor_id", vid)
-        .single(),
-      db
-        .from("vendor_agent_rules")
-        .select("kind, params")
-        .eq("vendor_id", vid)
-        .eq("active", true),
-      db
-        .from("vendor_packages")
-        .select("id, name, description, price, inclusions")
-        .eq("vendor_id", vid),
-      db.from("vendor_addons").select("id, name, description, price").eq("vendor_id", vid),
-      db
-        .from("vendor_availability")
-        .select("date, status, hold_expires_at")
-        .eq("vendor_id", vid),
-      db
-        .from("messages")
-        .select("sender, body, payload, created_at")
-        .eq("thread_id", threadId)
-        .eq("status", "sent")
-        .order("created_at")
-        .limit(20),
-      db
-        .from("couple_projects")
-        .select("wedding_date, metro_slug, guest_count, budget_total, style")
-        .eq("id", thread.project_id)
-        .single(),
-    ]);
+  const [
+    vendor,
+    settings,
+    ruleRows,
+    packages,
+    addOns,
+    bookings,
+    msgs,
+    project,
+  ] = await Promise.all([
+    db
+      .from("vendors")
+      .select("id, business_name, category, bio, metro_slug, price_min")
+      .eq("id", vid)
+      .single(),
+    db.from("vendor_agent_settings").select("*").eq("vendor_id", vid).single(),
+    db
+      .from("vendor_agent_rules")
+      .select("kind, params")
+      .eq("vendor_id", vid)
+      .eq("active", true),
+    db
+      .from("vendor_packages")
+      .select("id, name, description, price, inclusions")
+      .eq("vendor_id", vid),
+    db
+      .from("vendor_addons")
+      .select("id, name, description, price")
+      .eq("vendor_id", vid),
+    db
+      .from("vendor_availability")
+      .select("date, status, hold_expires_at")
+      .eq("vendor_id", vid),
+    db
+      .from("messages")
+      .select("sender, body, payload, created_at")
+      .eq("thread_id", threadId)
+      .eq("status", "sent")
+      .order("created_at")
+      .limit(20),
+    db
+      .from("couple_projects")
+      .select("wedding_date, metro_slug, guest_count, budget_total, style")
+      .eq("id", thread.project_id)
+      .single(),
+  ]);
 
   const rules: Rule[] = (ruleRows.data ?? [])
     .map((r) => RuleSchema.safeParse({ kind: r.kind, ...r.params }))
@@ -79,9 +86,12 @@ export async function loadVendorCtx(threadId: string) {
 
   const wedding = project.data!;
   const lastCoupleMessage =
-    [...(msgs.data ?? [])].reverse().find((m) => m.sender.startsWith("couple"))?.body ?? "";
+    [...(msgs.data ?? [])].reverse().find((m) => m.sender.startsWith("couple"))
+      ?.body ?? "";
   // What the vendor taught their assistant (site, FAQs, PDFs) that bears on this message.
   const knowledge = await searchKnowledge(vid, lastCoupleMessage);
+
+  if (process.env.AGENT_KILL_SWITCH === "1") settings.data!.autonomy_level = 0;
 
   return {
     threadId,

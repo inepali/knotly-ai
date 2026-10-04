@@ -6,11 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "vitest run",
     "lint": "eslint",
     "migrate": "supabase db push",
     "reset": "supabase db reset --linked && pnpm seed",
     "types": "supabase gen types typescript --linked > src/lib/supabase/types.ts",
-    "seed": "tsx --env-file=.env.local scripts/seed.mts"
+    "seed": "tsx --env-file=.env.local scripts/seed.mts",
+    "evals": "tsx --env-file=.env.local evals/vendor-agent.mts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.65",
@@ -39,7 +41,8 @@
     "supabase": "^2.118.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.0.3"
   },
   "packageManager": "pnpm@12.6.0"
 }
