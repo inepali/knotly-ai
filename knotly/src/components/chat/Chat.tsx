@@ -9,9 +9,14 @@ import { supabaseBrowser } from "@/lib/supabase/browser";
 import { Logo } from "@/components/ui/Logo";
 import AccountCard, { HAS_ACCOUNT_KEY, type Role } from "./cards/AccountCard";
 import {
+  BUDGET,
+  BUDGET_TOOLS,
   BUSINESS,
   BUSINESS_TOOLS,
   INBOX,
+  WEDDING,
+  WEDDING_TOOLS,
+  toolVersion,
   WorkspacePanel,
   chipLabel,
   deriveArtifacts,
@@ -101,19 +106,29 @@ export default function Chat() {
   const activeId =
     pick && pick.at === artifacts.length
       ? pick.id
-      : (artifacts.at(-1)?.id ?? (account ? INBOX : role === "vendor" ? BUSINESS : undefined));
+      : (artifacts.at(-1)?.id ?? (role === "vendor" ? (account ? INBOX : BUSINESS) : WEDDING));
   const inboxOpen = pick?.id === INBOX && pick.at === artifacts.length;
   const unseen = artifacts.length - seen;
-  // Each finished listing change (packages, add-ons, profile…) reloads My business.
-  const businessVersion = messages
-    .flatMap((m) => m.parts)
-    .filter(
-      (p) =>
-        p.type.startsWith("tool-") &&
-        BUSINESS_TOOLS.has(p.type.slice("tool-".length)) &&
-        "state" in p &&
-        p.state === "output-available"
-    ).length;
+  // Each finished budget call, or new mail (which may carry a quote), reloads the Budget tab.
+  // Reload keys for the fixed tabs: each finished call to a tool that changes one, plus
+  // new mail (which can bring a quote) for Budget, Vendors and Messages.
+  const versions = {
+    wedding: toolVersion(messages, WEDDING_TOOLS),
+    budget: toolVersion(messages, BUDGET_TOOLS) + mail.unread * 1000,
+    business: toolVersion(messages, BUSINESS_TOOLS),
+    mail: mail.unread + mail.review,
+  };
+  // A chat chip for a tool that changes a fixed tab opens that tab.
+  const fixedTabFor = (tool: string) =>
+    role === "vendor"
+      ? BUSINESS_TOOLS.has(tool)
+        ? BUSINESS
+        : null
+      : WEDDING_TOOLS.has(tool)
+        ? WEDDING
+        : BUDGET_TOOLS.has(tool)
+          ? BUDGET
+          : null;
 
   async function loadAccount() {
     const sb = supabaseBrowser();
@@ -394,13 +409,14 @@ export default function Chat() {
                   </button>
                 );
 
-              // Listing changes: a chip that opens My business.
-              if (done && role === "vendor" && BUSINESS_TOOLS.has(tool))
+              // Changes to My Wedding, Budget or My business: a chip that opens that tab.
+              const tab = done ? fixedTabFor(tool) : null;
+              if (tab)
                 return (
                   <button
                     key={i}
                     type="button"
-                    onClick={() => open(BUSINESS)}
+                    onClick={() => open(tab)}
                     className="my-1 mr-2 inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1 text-xs text-gray-700"
                   >
                     ✓ {chipLabel(tool, done)} <span aria-hidden>→</span>
@@ -468,12 +484,13 @@ export default function Chat() {
             activeId={activeId}
             onSelect={open}
             onAsk={post}
-            showInbox={!!account}
-            showKnowledge={role === "vendor"}
-            showBusiness={role === "vendor"}
-            businessVersion={businessVersion}
+            show={
+              role === "vendor"
+                ? { inbox: !!account, business: true, knowledge: true }
+                : { wedding: true, budget: true, vendors: !!account, inbox: !!account }
+            }
+            versions={versions}
             unread={mail.unread}
-            mailVersion={mail.unread + mail.review}
             onInboxChange={refreshMail}
           />
         </aside>

@@ -1,5 +1,6 @@
 // src/components/chat/cards/WeddingCard.tsx
 // The couple's saved plan, shown in the workspace's "My Wedding" tab.
+import { categoryLabel } from "@/lib/categories";
 type Wedding = {
   partner_names?: string | null;
   wedding_date?: string | null;
@@ -24,7 +25,7 @@ const rows: [keyof Wedding, string, (v: never) => string][] = [
   ["guest_count", "Guests", (v: number) => v.toLocaleString()],
   ["budget_total", "Budget", (v: number) => `$${v.toLocaleString()}`],
   ["style", "Style", (v: string) => v],
-  ["needs", "Still need", (v: string[]) => v.map((n) => n.replace("_", " & ")).join(", ")],
+  ["needs", "Still need", (v: string[]) => v.map(categoryLabel).join(", ")],
 ];
 
 export default function WeddingCard({

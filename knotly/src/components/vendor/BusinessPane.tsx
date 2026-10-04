@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { VendorOffer, type AddOn, type Package } from "./Offer";
+import { categoryLabel } from "@/lib/categories";
 
 type Listing = {
   business_name: string;
@@ -61,7 +62,7 @@ export default function BusinessPane({ refreshKey = 0 }: { refreshKey?: number }
       <header className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-xs uppercase tracking-wide text-gray-500">
-            {listing.category.replace("_", " & ")}
+            {categoryLabel(listing.category)}
             {city(listing.metro_slug) && ` · ${city(listing.metro_slug)}`}
           </p>
           <h3 className="text-xl font-semibold">{listing.business_name}</h3>

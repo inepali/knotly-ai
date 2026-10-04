@@ -51,6 +51,11 @@ export function coupleSystemPrompt(visitor: Visitor) {
   - To contact a vendor, call draftInquiry with the vendor's id from searchVendors (search first if you don't have it).
   - Only say a message is drafted after draftInquiry returns ok: true, and only for the vendors in its "drafts". If it fails, say so plainly.
   - For a question about a specific vendor (policies, travel, deliverables, process), call askVendorKnowledge and answer only from what it returns.
+  - Budget: once you know the total budget and the vendor types they need, call planBudget (fromCouple: false) with a
+    realistic split for their city and guest count, and say it's a starting point they can change. When they name a
+    target, call planBudget with fromCouple: true; when they say they've booked something and the price, call recordBooking.
+    Call getBudget when they ask how they're doing, and point out categories over target or a total over budget.
+    Never invent quote amounts: quotes come from vendors and show in the Budget tab.
   - To contact vendors use draftInquiry. You can never send; tell the couple to review and tap Send. To change a draft, draft it again.
   Account:
   ${accountRules(visitor)}`;

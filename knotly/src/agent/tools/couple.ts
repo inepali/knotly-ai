@@ -6,6 +6,7 @@ import { embedText } from "@/lib/embeddings";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { accountTools } from "./account";
 import { searchKnowledge } from "@/lib/knowledge";
+import { loadBudget } from "@/lib/budget";
 
 export function coupleTools({ sb, userId, isGuest }: ToolCtx) {
   async function getProject() {
@@ -212,6 +213,92 @@ export function coupleTools({ sb, userId, isGuest }: ToolCtx) {
         return error
           ? { ok: false, error: error.message }
           : { ok: true, vendor: data };
+      },
+    }),
+
+    getBudget: tool({
+      description:
+        "The couple's budget: total, each category's planned target, vendor quotes received and bookings, and what's left.",
+      inputSchema: z.object({}),
+      execute: async () => (await loadBudget(sb, userId)) ?? { empty: true, note: "Save wedding details first." },
+    }),
+
+    planBudget: tool({
+      description:
+        "Set target amounts per category (whole USD). Use to suggest an allocation from the total budget, guest count and city, or when the couple names a target. Keeps the couple's own targets unless they ask to change them.",
+      inputSchema: z.object({
+        allocations: z
+          .array(
+            z.object({
+              category: z.union([Category, z.literal("other")]),
+              label: z.string().optional().describe('Only for "other", e.g. "Rings"'),
+              amount: z.number().int().min(0),
+            })
+          )
+          .min(1)
+          .max(20),
+        fromCouple: z.boolean().describe("true if the couple stated these amounts; false if you're suggesting them"),
+      }),
+      execute: async ({ allocations, fromCouple }) => {
+        const wedding = await getProject();
+        if (!wedding) return { ok: false, error: "Save wedding details first." };
+        const { data: existing } = await sb
+          .from("budget_items")
+          .select("category, label, planned_by")
+          .eq("project_id", wedding.id);
+        const skipped: string[] = [];
+        const rows = allocations
+          .filter((a) => {
+            const own = existing?.find(
+              (e) => e.category === a.category && (e.label ?? null) === (a.label ?? null) && e.planned_by === "couple"
+            );
+            if (own && !fromCouple) skipped.push(a.label ?? a.category); // never overwrite the couple's own target
+            return !(own && !fromCouple);
+          })
+          .map((a) => ({
+            project_id: wedding.id,
+            category: a.category,
+            label: a.label ?? null,
+            planned: a.amount,
+            planned_by: fromCouple ? "couple" : "ai",
+            updated_at: new Date().toISOString(),
+          }));
+        if (rows.length) {
+          const { error } = await sb
+            .from("budget_items")
+            .upsert(rows, { onConflict: "project_id,category,label" });
+          if (error) return { ok: false, error: error.message };
+        }
+        return { ok: true, budget: await loadBudget(sb, userId), keptCoupleTargets: skipped };
+      },
+    }),
+
+    recordBooking: tool({
+      description: "Record that the couple booked a vendor or item, and for how much (whole USD).",
+      inputSchema: z.object({
+        category: z.union([Category, z.literal("other")]),
+        label: z.string().optional().describe('Only for "other", e.g. "Rings"'),
+        amount: z.number().int().min(0),
+        vendorId: z.string().optional().describe("The vendor's id, if booked through Knotly"),
+        note: z.string().max(200).optional().describe('e.g. "Golden Hour Co., Signature package"'),
+      }),
+      execute: async ({ category, label, amount, vendorId, note }) => {
+        const wedding = await getProject();
+        if (!wedding) return { ok: false, error: "Save wedding details first." };
+        const { error } = await sb.from("budget_items").upsert(
+          {
+            project_id: wedding.id,
+            category,
+            label: label ?? null,
+            booked: amount,
+            booked_vendor_id: vendorId && z.uuid().safeParse(vendorId).success ? vendorId : null,
+            booked_note: note ?? null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "project_id,category,label" }
+        );
+        if (error) return { ok: false, error: error.message };
+        return { ok: true, budget: await loadBudget(sb, userId) };
       },
     }),
 

@@ -1,6 +1,7 @@
 // src/components/chat/cards/VendorDetailsCard.tsx
 // One vendor's packages, add-ons and reviews (getVendorDetails), shown in the workspace.
 import { VendorOffer, type AddOn, type Package } from "@/components/vendor/Offer";
+import { categoryLabel } from "@/lib/categories";
 
 type Details = {
   id: string;
@@ -25,7 +26,7 @@ export default function VendorDetailsCard({
   return (
     <div className="space-y-5 text-sm">
       <div>
-        <p className="text-xs uppercase tracking-wide text-gray-500">{v.category.replace("_", " & ")}</p>
+        <p className="text-xs uppercase tracking-wide text-gray-500">{categoryLabel(v.category)}</p>
         <h3 className="text-lg font-semibold">{v.business_name}</h3>
         {v.bio && <p className="mt-1 text-gray-700">{v.bio}</p>}
       </div>

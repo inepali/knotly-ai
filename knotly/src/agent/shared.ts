@@ -1,22 +1,11 @@
 // src/agent/shared.ts
 import { z } from "zod";
+import { CATEGORY_SLUGS } from "@/lib/categories";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-export const CATEGORIES = [
-  "photographer",
-  "videographer",
-  "dj",
-  "band",
-  "florist",
-  "venue",
-  "caterer",
-  "planner",
-  "hair_makeup",
-  "officiant",
-  "cake",
-  "rentals",
-] as const;
-export const Category = z.enum(CATEGORIES);
+// The vendor category list lives in src/lib/categories.ts (mirrors the vendor_categories table).
+export const CATEGORIES = CATEGORY_SLUGS;
+export const Category = z.enum(CATEGORY_SLUGS);
 
 export type ToolCtx = {
   sb: SupabaseClient;

@@ -16,9 +16,17 @@ const when = (iso: string) => {
     : d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 };
 
-export default function InboxPane({ onChange, refreshKey = 0 }: { onChange?: () => void; refreshKey?: number }) {
+export default function InboxPane({
+  onChange,
+  refreshKey = 0,
+  initialThreadId = null,
+}: {
+  onChange?: () => void;
+  refreshKey?: number;
+  initialThreadId?: string | null; // open straight into this conversation
+}) {
   const [folder, setFolder] = useState<MailView>("messages");
-  const [threadId, setThreadId] = useState<string | null>(null);
+  const [threadId, setThreadId] = useState<string | null>(initialThreadId);
   const [list, setList] = useState<{ side: Side; items: MailItem[] } | null>(null);
   const [thread, setThread] = useState<ThreadItem[] | null>(null);
   const [error, setError] = useState("");

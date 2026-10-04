@@ -6,6 +6,7 @@ import { Container } from "@/components/ui/Container";
 import { SiteFooter } from "@/components/ui/SiteFooter";
 import { SiteHeader } from "@/components/ui/SiteHeader";
 import { fieldClasses } from "@/components/ui/fields";
+import { categoryLabel } from "@/lib/categories";
 
 type Result = {
   id: string;
@@ -64,7 +65,7 @@ export default async function SearchPage(props: PageProps<"/search">) {
                   className="flex flex-col rounded-3xl bg-white p-6 shadow-lg shadow-gray-900/5 ring-1 ring-gray-900/5"
                 >
                   <p className="text-xs font-semibold tracking-wide text-cyan-700 uppercase">
-                    {v.category.replace("_", " & ")}
+                    {categoryLabel(v.category)}
                   </p>
                   <h2 className="mt-2 text-lg font-semibold text-gray-900">{v.business_name}</h2>
                   <p className="mt-1 text-sm text-gray-600">
