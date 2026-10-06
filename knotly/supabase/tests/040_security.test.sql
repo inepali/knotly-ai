@@ -30,6 +30,17 @@ begin
                    'a vendor cannot edit another listing');
 end $$;
 
+create function tap_tests.test_public_marketplace_still_readable() returns setof text language plpgsql as $$
+declare t text; v int;
+begin
+  foreach t in array array['vendors', 'vendor_packages', 'metros', 'vendor_categories', 'plan_pricing'] loop
+    perform tap_tests.login_anon();
+    v := tap_tests.n(format('select 1 from %I', t));
+    perform tap_tests.logout();
+    return next ok(v > 0, format('signed-out visitors can read %s', t));
+  end loop;
+end $$;
+
 create function tap_tests.test_server_owned_vendor_columns() returns setof text language plpgsql as $$
 declare c text; st text;
 begin
