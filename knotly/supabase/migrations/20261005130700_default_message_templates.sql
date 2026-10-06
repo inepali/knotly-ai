@@ -1,0 +1,45 @@
+-- Knotly default message templates (vendor_id null). A vendor's own row for the same
+-- (event, channel) overrides the default. Merge fields per spec §7; the sender fills them.
+-- Spec fields: {{couple_names}} {{date}} {{package}} {{deliverables}} {{price}} {{deposit}}
+-- {{hold_expires}} {{call_link}} {{vendor_signature}}. Added: {{vendor_name}} {{link}}
+-- {{alternative_dates}} {{call_time}}. SMS opt-out wording is appended by the outbox sender.
+
+insert into message_templates (vendor_id, event, channel, subject, body) values
+  (null, 'hold_confirmed', 'email', '{{date}} is held for you',
+   E'Hi {{couple_names}},\n\nGreat news: {{date}} is open and I''ve held it for you until {{hold_expires}}.\n\nYour package: {{package}} ({{price}})\n{{deliverables}}\n\nNext step: accept the offer and I''ll send the contract to sign online.\n{{link}}\n\n{{vendor_signature}}'),
+  (null, 'hold_confirmed', 'sms', null,
+   '{{vendor_name}}: {{date}} is held for you until {{hold_expires}}. Review your offer: {{link}}'),
+  (null, 'date_unavailable', 'email', 'About {{date}}',
+   E'Hi {{couple_names}},\n\nThank you for thinking of us. Unfortunately {{date}} is already booked.\n\nThese nearby dates are open: {{alternative_dates}}. If one works, you can request it here: {{link}}\n\n{{vendor_signature}}'),
+  (null, 'hold_expiring', 'email', 'Your hold on {{date}} ends {{hold_expires}}',
+   E'Hi {{couple_names}},\n\nJust a reminder that your hold on {{date}} ends {{hold_expires}}. To keep the date, accept the offer here: {{link}}\n\n{{vendor_signature}}'),
+  (null, 'hold_expiring', 'sms', null,
+   '{{vendor_name}}: your hold on {{date}} ends {{hold_expires}}. Keep the date: {{link}}'),
+  (null, 'followup_1', 'email', 'Any questions about {{date}}?',
+   E'Hi {{couple_names}},\n\nI wanted to check in on the offer for {{date}}. Happy to answer any questions, or you can book a quick call: {{link}}\n\n{{vendor_signature}}'),
+  (null, 'followup_2', 'email', 'Still thinking it over?',
+   E'Hi {{couple_names}},\n\nNo rush at all. If you''d still like us for {{date}}, the offer is here: {{link}}. If your plans have changed, just let me know.\n\n{{vendor_signature}}'),
+  (null, 'call_offer', 'email', 'Pick a time to talk',
+   E'Hi {{couple_names}},\n\nI''d love to chat. Pick a time that suits you: {{link}}\n\n{{vendor_signature}}'),
+  (null, 'call_booked', 'email', 'Our call on {{call_time}}',
+   E'Hi {{couple_names}},\n\nYou''re booked for a call on {{call_time}}.\nJoin here: {{call_link}}\n\n{{vendor_signature}}'),
+  (null, 'call_reminder', 'email', 'Reminder: our call at {{call_time}}',
+   E'Hi {{couple_names}},\n\nA quick reminder about our call at {{call_time}}.\nJoin here: {{call_link}}\n\n{{vendor_signature}}'),
+  (null, 'call_reminder', 'sms', null,
+   '{{vendor_name}}: reminder, our call is at {{call_time}}. {{call_link}}'),
+  (null, 'contract_sent', 'email', 'Your contract for {{date}}',
+   E'Hi {{couple_names}},\n\nYour contract for {{package}} on {{date}} is ready to review and sign online: {{link}}\n\n{{vendor_signature}}'),
+  (null, 'contract_countersigned', 'email', 'Contract signed by both of us',
+   E'Hi {{couple_names}},\n\nThe contract for {{date}} is now signed by both of us. A copy is saved in your Documents: {{link}}\n\n{{vendor_signature}}'),
+  (null, 'booking_welcome', 'email', 'You''re booked for {{date}}!',
+   E'Hi {{couple_names}},\n\nWe''re officially booked for {{date}}. Thank you for choosing us!\n\nWhat''s included: {{deliverables}}\n\nI''ll be in touch as the day gets closer.\n\n{{vendor_signature}}'),
+  (null, 'booking_welcome', 'sms', null,
+   '{{vendor_name}}: you''re booked for {{date}}! Details: {{link}}'),
+  (null, 'booking_declined', 'email', 'About your request for {{date}}',
+   E'Hi {{couple_names}},\n\nThank you for your request. Unfortunately we can''t take this booking. I hope you find the perfect fit, and congratulations again.\n\n{{vendor_signature}}'),
+  (null, 'booking_expired', 'email', 'Your hold on {{date}} has ended',
+   E'Hi {{couple_names}},\n\nYour hold on {{date}} has ended and the date is open again. If you''d still like to book, you can request it here: {{link}}\n\n{{vendor_signature}}'),
+  (null, 'final_details', 'email', 'Final details for {{date}}',
+   E'Hi {{couple_names}},\n\nYour wedding is two weeks away! Please check the timeline items I''m part of and let me know of any changes: {{link}}\n\n{{vendor_signature}}'),
+  (null, 'review_request', 'email', 'How did we do?',
+   E'Hi {{couple_names}},\n\nCongratulations again! If you have a minute, a short review would mean a lot: {{link}}\n\n{{vendor_signature}}');
