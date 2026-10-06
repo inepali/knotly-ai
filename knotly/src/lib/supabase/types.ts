@@ -2461,6 +2461,10 @@ export type Database = {
             }
             Returns: string
           }
+      can_assign_timeline_vendor: {
+        Args: { p_event: string; p_vendor: string }
+        Returns: boolean
+      }
       charge_estimate_view: { Args: { p_quote: string }; Returns: undefined }
       disablelongtransactions: { Args: never; Returns: string }
       dropgeometrycolumn:
