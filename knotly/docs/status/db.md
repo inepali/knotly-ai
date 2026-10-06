@@ -10,17 +10,29 @@
 - Backfills verified: 9/9 vendor slugs, package deliverables from inclusions, budget
   `estimated = planned`, 6 needs from `couple_projects.needs[]`.
 - `src/lib/supabase/types.ts` generated; `src/contracts/db.ts` (CONTRACT_VERSION 1).
+- pgTAP RLS suite: **192 assertions, all passing** on knotly-dev — `bash supabase/tests/run.sh`
+  (no Docker; runs `begin; _setup; file; rollback;` through the Management API, leaves nothing
+  behind). Covers couple-owned, vendor-owned, shared rows, S-2/S-3/S-4, public site + RSVP,
+  Help cap, SMS usage, storage folders. Found and fixed a policy recursion on
+  `timeline_assignments` (`20261005130800`).
+- Security advisor run: anon EXECUTE on RLS helpers revoked (`20261005130900`). Remaining
+  warnings are pre-existing / need approval: extensions in `public` + `spatial_ref_sys` (S-5,
+  Q-8), `match_vendors` search_path, anonymous sign-ins (S-7), leaked-password protection (DB-003).
+- `scripts/seed.mts`: idempotent; packages with hours/deliverables/retainers, 9 KB FAQs with
+  search pieces, `couple@test.dev` with a saved wedding + 3 needs. Run on knotly-dev.
 
 ## In progress
-- pgTAP RLS tests (`supabase/tests/`), run with `supabase test db --linked`.
+- Phase 0 PR open; waiting for review.
 
-## Next
-- Seed script: vendors with packages + deliverables, KB FAQs, couple/vendor test accounts.
-- PR for Phase 0.
+## Next (Phase 1)
+- Search and booking queries; Realtime is already on for bookings/messages/activity_events.
+- Revoke `select (total, line_items)` on `quotes` once ai + ui read via `view_quote` (S-2).
+- DB-002 migration if approved.
 
 ## Waiting on human (IDs)
 - DB-001 default contract template text (lawyer review, Q-12) — not blocking.
 - DB-002 vendor_availability primary key — not blocking.
+- DB-003 turn on leaked-password protection in Auth — not blocking.
 
 ## Requests to other agents
 - **ai + ui (S-2):** read estimate prices through `rpc('view_quote', { p_quote })` (charges the

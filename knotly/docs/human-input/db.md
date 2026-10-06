@@ -24,3 +24,10 @@ Statuses: [OPEN] · [ANSWERED] · [DONE]. Secrets go in .env.local, never here.
 - **Where to put it:** reply here ("approved" / "no")
 - **Blocking?** no — holds can still be written with a thread id; blocking dates waits for this
 - **Answer:**
+
+### [OPEN] DB-003 · Turn on leaked-password protection
+- **Needed for:** Auth hardening (Supabase security advisor `auth_leaked_password_protection`)
+- **What exactly:** In the Supabase dashboard (dev, and later prod): Authentication → Policies/Passwords → enable "Leaked password protection" (checks HaveIBeenPwned). Dashboard setting, not a migration.
+- **Where to put it:** reply here when done
+- **Blocking?** no
+- **Answer:**
