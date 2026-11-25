@@ -18,7 +18,7 @@ const coupleOf = async (threadId: string) =>
       .select("couple_projects(couple_id)")
       .eq("id", threadId)
       .single()
-  ).data as any;
+  ).data as unknown as { couple_projects: { couple_id: string } };
 
 // Send the decision for real
 export async function act(
@@ -27,8 +27,8 @@ export async function act(
   priced: Priced | null,
   message = d.message
 ) {
-  let body = message,
-    payload: Record<string, unknown> = { responseType: d.responseType };
+  let body = message;
+  const payload: Record<string, unknown> = { responseType: d.responseType };
 
   if (d.responseType === "quote" && priced) {
     const validUntil = new Date(
