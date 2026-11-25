@@ -17,6 +17,8 @@ export const SaveWeddingDetailsInput = z.object({
   guestCount: z.number().int().positive().optional(),
   budgetTotal: z.number().int().positive().optional().describe("Total budget in USD"),
   style: z.string().optional().describe('Their words, e.g. "boho, outdoor"'),
+  loveStory: z.string().max(2000).optional().describe("Their story, in their words; empty clears it"),
+  projectDetails: z.string().max(2000).optional().describe("Details and expectations for vendors; empty clears it"),
   needs: z.array(Category).optional().describe("Vendor types still needed"),
 });
 export type SaveWeddingDetailsInput = z.input<typeof SaveWeddingDetailsInput>;
@@ -114,6 +116,8 @@ async function persist(sb: Sb, userId: string, i: Saved) {
       guest_count: i.guestCount,
       budget_total: i.budgetTotal,
       style: i.style,
+      love_story: i.loveStory,
+      project_details: i.projectDetails,
       needs: i.needs,
     }).filter(([, v]) => v !== undefined)
   );

@@ -32,6 +32,8 @@ type ProjectRow = {
   guest_count: number | null;
   budget_total: number | null;
   style: string | null;
+  love_story?: string | null;
+  project_details?: string | null;
   posted_at: string | null;
 };
 
@@ -64,6 +66,8 @@ export function projectPostBody(p: ProjectRow, need: NeedRow) {
     `They're looking for a ${categoryLabel(need.category).toLowerCase()}` +
       `${need.service_hours ? ` for about ${need.service_hours} hour${need.service_hours === 1 ? "" : "s"} of service` : ""}` +
       `${budget ? ` and have ${usd(budget)} in mind${need.budget ? " for this" : " in total for the wedding"}` : ""}.`,
+    ...(p.love_story?.trim() ? [`Their story: ${p.love_story.trim()}`] : []),
+    ...(p.project_details?.trim() ? [`Details and expectations: ${p.project_details.trim()}`] : []),
     "Please send an estimate if you're available.",
   ].join(" ");
 }
@@ -215,7 +219,7 @@ export async function advanceWaves(projectId: string) {
   const db = supabaseAdmin;
   const { data: project } = await db
     .from("couple_projects")
-    .select("id, wedding_date, metro_slug, guest_count, budget_total, style, posted_at")
+    .select("id, wedding_date, metro_slug, guest_count, budget_total, style, love_story, project_details, posted_at")
     .eq("id", projectId)
     .single();
   if (!project?.posted_at) return { asked: 0 };

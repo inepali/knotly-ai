@@ -24,6 +24,8 @@ export default async function MyWeddingPage() {
     guestCount: project?.guest_count ?? null,
     budgetTotal: project?.budget_total ?? null,
     style: project?.style ?? "",
+    loveStory: project?.love_story ?? "",
+    projectDetails: project?.project_details ?? "",
     needs: (needs ?? []).map((n: { category: string; budget: number | null; service_hours: number | null }) => ({
       category: n.category,
       budget: n.budget,

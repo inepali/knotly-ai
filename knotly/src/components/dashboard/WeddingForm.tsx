@@ -15,6 +15,8 @@ export type WeddingFormInitial = {
   guestCount: number | null;
   budgetTotal: number | null;
   style: string;
+  loveStory: string;
+  projectDetails: string;
   needs: { category: string; budget: number | null; hours: number | null }[];
   postedAt: string | null;
 };
@@ -32,6 +34,8 @@ export default function WeddingForm({ initial, metros }: { initial: WeddingFormI
     guestCount: initial.guestCount?.toString() ?? "",
     budgetTotal: initial.budgetTotal?.toString() ?? "",
     style: initial.style,
+    loveStory: initial.loveStory,
+    projectDetails: initial.projectDetails,
   });
   // category -> budget text ("" = no budget); present key = needed
   const [needs, setNeeds] = useState<Record<string, string>>(
@@ -44,7 +48,7 @@ export default function WeddingForm({ initial, metros }: { initial: WeddingFormI
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
 
-  const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+  const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setV((s) => ({ ...s, [k]: e.target.value }));
   const toggle = (category: string) =>
     setNeeds((s) => {
@@ -63,6 +67,9 @@ export default function WeddingForm({ initial, metros }: { initial: WeddingFormI
     guestCount: whole(v.guestCount),
     budgetTotal: whole(v.budgetTotal),
     style: v.style.trim() || undefined,
+    // sent even when empty, so clearing the box clears the saved text
+    loveStory: v.loveStory.trim(),
+    projectDetails: v.projectDetails.trim(),
     needs: Object.keys(needs),
     needBudgets: Object.entries(needs).map(([category, b]) => ({
       category,
@@ -134,6 +141,30 @@ export default function WeddingForm({ initial, metros }: { initial: WeddingFormI
         <div className="sm:col-span-2">
           <Field label="Style">
             <input className={fieldClasses} value={v.style} onChange={set("style")} placeholder="boho, outdoor, golden hour" />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Your love story">
+            <textarea
+              className={fieldClasses}
+              rows={4}
+              maxLength={2000}
+              value={v.loveStory}
+              onChange={set("loveStory")}
+              placeholder="How you met, what your day means to you. Vendors read this to understand what matters to you."
+            />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Project details and expectations">
+            <textarea
+              className={fieldClasses}
+              rows={4}
+              maxLength={2000}
+              value={v.projectDetails}
+              onChange={set("projectDetails")}
+              placeholder="Anything vendors should know: timeline, must-have shots or songs, venue rules, what you expect from them."
+            />
           </Field>
         </div>
       </section>
