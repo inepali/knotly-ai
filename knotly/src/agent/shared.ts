@@ -7,12 +7,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export const CATEGORIES = CATEGORY_SLUGS;
 export const Category = z.enum(CATEGORY_SLUGS);
 
-export type ToolCtx = {
-  sb: SupabaseClient;
-  userId: string;
-  isGuest: boolean; // anonymous session that hasn't verified an email yet
-};
-
 // "Charlotte", "charlotte, nc" or "charlotte-nc" -> metro row (or null)
 export async function resolveMetro(sb: SupabaseClient, input: string) {
   const q = input.split(",")[0].trim();

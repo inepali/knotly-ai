@@ -1,4 +1,4 @@
-// src/components/ui/SiteHeader.tsx — Pocket-style header for pages outside the chat.
+// src/components/ui/SiteHeader.tsx — Pocket-style header for the public pages.
 "use client";
 import Link from "next/link";
 import { Popover, PopoverBackdrop, PopoverButton, PopoverPanel } from "@headlessui/react";
@@ -6,11 +6,7 @@ import { Button } from "./Button";
 import { Container } from "./Container";
 import { Logo } from "./Logo";
 
-const links = [
-  ["Plan with Knotly", "/chat"],
-  ["Find vendors", "/search"],
-  ["Messages", "/inbox"],
-] as const;
+const links = [["Messages", "/inbox"]] as const;
 
 function MenuIcon(props: React.ComponentPropsWithoutRef<"svg">) {
   return (

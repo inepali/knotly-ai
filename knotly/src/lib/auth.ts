@@ -19,10 +19,10 @@ export const Password = z.string().min(8, "Use at least 8 characters");
 export const SignupRole = z.enum(["couple", "vendor"]);
 export type SignupRole = z.infer<typeof SignupRole>;
 
-// Where each role lands after signing up or in. Admins have no dashboard yet and use the chat.
+// Where each role lands after signing up or in. Admins have no dashboard yet, so they land on the home page.
 export function homeFor(role: string | null | undefined) {
   if (role === "vendor") return "/vendor/dashboard/business";
-  return role === "couple" ? "/client/dashboard/my-wedding" : "/chat";
+  return role === "couple" ? "/client/dashboard/my-wedding" : "/";
 }
 
 // { email } or { phone }, the shape supabase-js expects.

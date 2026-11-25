@@ -11,7 +11,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Knotly",
-  description: "Plan your wedding by chatting with Knotly.",
+  description: "Wedding planning in the Carolinas: post your wedding once and vendors who are free and fit your budget send you estimates.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

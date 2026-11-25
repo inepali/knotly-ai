@@ -1,7 +1,6 @@
 "use server";
 // Server actions behind the vendor dashboard's forms. Each one re-checks who is signed in
-// (and that they're a vendor), then calls the shared function in src/lib/actions, the same
-// one the chat tools use.
+// (and that they're a vendor), then calls the shared server function in src/lib/actions.
 import { revalidatePath } from "next/cache";
 import { vendorOrError } from "@/lib/vendor-session";
 import {

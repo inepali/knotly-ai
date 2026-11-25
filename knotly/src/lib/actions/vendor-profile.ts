@@ -1,5 +1,5 @@
 // src/lib/actions/vendor-profile.ts — the business profile, packages, add-ons, testimonials
-// and publishing (shared by chat tools and forms).
+// and publishing (shared by the dashboard forms).
 import { z } from "zod";
 import { after } from "next/server";
 import { Category, resolveMetro } from "@/agent/shared";
@@ -191,7 +191,7 @@ export async function publishProfile(sb: Sb, userId: string, input: unknown, ctx
   return ok({ published: publish });
 }
 
-// --- Editing what's already saved (forms; the chat tools only ever add) ---------------------
+// --- Editing what's already saved (the dashboard forms) ---------------------
 
 const Id = z.uuid("That item doesn't exist.");
 

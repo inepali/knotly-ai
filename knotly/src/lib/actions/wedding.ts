@@ -1,4 +1,4 @@
-// src/lib/actions/wedding.ts — the couple's wedding details (shared by chat tools and forms).
+// src/lib/actions/wedding.ts — the couple's wedding details (shared by the dashboard forms).
 import { z } from "zod";
 import { Category, resolveMetro } from "@/agent/shared";
 import { fail, ok, parseInput, type Sb } from "./result";

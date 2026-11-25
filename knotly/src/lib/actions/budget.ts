@@ -1,4 +1,4 @@
-// src/lib/actions/budget.ts — budget targets and bookings (shared by chat tools and forms).
+// src/lib/actions/budget.ts — budget targets and bookings (shared by the dashboard forms).
 import { z } from "zod";
 import { Category } from "@/agent/shared";
 import { loadBudget } from "@/lib/budget";

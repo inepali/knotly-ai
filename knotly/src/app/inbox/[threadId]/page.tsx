@@ -13,7 +13,7 @@ export default async function ThreadPage(props: PageProps<"/inbox/[threadId]">) 
 
   const sb = await supabaseServer();
   const viewer = await getViewer(sb);
-  if (!viewer) redirect("/chat");
+  if (!viewer) redirect("/signin");
 
   const [messages, all] = await Promise.all([
     loadThread(sb, viewer.side, threadId),

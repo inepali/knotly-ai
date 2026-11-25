@@ -12,20 +12,26 @@ export default function Home() {
         <Container>
           <div className="mx-auto max-w-2xl text-center">
             <h1 className="text-4xl font-medium tracking-tight text-gray-900 sm:text-5xl">
-              Plan your wedding by chatting.
+              Post your wedding once. Let the right vendors come to you.
             </h1>
             <p className="mt-6 text-lg text-gray-600">
-              Tell Knotly your date, city and style. It finds vendors that fit, drafts your inquiries, and keeps every
-              conversation in one place.
+              Tell Knotly your date, city, budget and the vendors you need. Vendors who are free on your day and fit your
+              budget send you estimates, and every conversation stays in one place.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-4">
-              <Button href="/chat" color="cyan">
+              <Button href="/signup" color="cyan">
                 Start planning
               </Button>
-              <Button href="/search" variant="outline">
-                Find vendors
+              <Button href="/signup?role=vendor" variant="outline">
+                I&apos;m a wedding vendor
               </Button>
             </div>
+            <p className="mt-6 text-sm text-gray-500">
+              Already have an account?{" "}
+              <a href="/signin" className="text-cyan-700 underline">
+                Sign in
+              </a>
+            </p>
           </div>
         </Container>
       </main>

@@ -1,5 +1,5 @@
 // src/lib/actions/availability.ts — a vendor's calendar and consultation hours
-// (shared by chat tools and forms).
+// (shared by the dashboard forms).
 import { z } from "zod";
 import { NO_THREAD } from "@/agent/vendor/rules";
 import { fail, ok, parseInput, type Sb } from "./result";

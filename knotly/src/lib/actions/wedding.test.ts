@@ -92,7 +92,7 @@ describe("saveWeddingForm", () => {
   });
 });
 
-describe("saveWeddingDetails (chat) also syncs needs", () => {
+describe("saveWeddingDetails also syncs needs", () => {
   it("writes project_needs when needs are sent", async () => {
     const { sb, called } = mockSb({ couple_projects: [{ data: null }, { data: { id: "p1" } }], project_needs: { data: [] } });
     await saveWeddingDetails(sb, "u1", { needs: ["dj"] });

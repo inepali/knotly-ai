@@ -1,5 +1,5 @@
-// src/components/chat/cards/WeddingCard.tsx
-// The couple's saved plan, shown in the workspace's "My Wedding" tab.
+// src/components/couple/WeddingCard.tsx
+// A read-only view of the couple's saved plan.
 import { categoryLabel } from "@/lib/categories";
 type Wedding = {
   partner_names?: string | null;

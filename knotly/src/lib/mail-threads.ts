@@ -1,5 +1,5 @@
 // src/lib/mail-threads.ts — group mailbox items into conversations.
-// Pure, so both the /inbox page (server) and the chat's Messages tab (client) use it.
+// Pure, so server pages and client components can both use it.
 import type { MailItem } from "@/lib/mailbox";
 
 // Messages: sent and received together, one row per conversation.

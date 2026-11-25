@@ -2,10 +2,10 @@ import { describe, it, expect } from "vitest";
 import { homeFor, SignupRole } from "./auth";
 
 describe("homeFor", () => {
-  it("sends couples and vendors to their dashboards and everyone else to /chat", () => {
+  it("sends couples and vendors to their dashboards and everyone else to the home page", () => {
     expect(homeFor("couple")).toBe("/client/dashboard/my-wedding");
     expect(homeFor("vendor")).toBe("/vendor/dashboard/business");
-    for (const r of ["admin", null, undefined, "weird"]) expect(homeFor(r)).toBe("/chat");
+    for (const r of ["admin", null, undefined, "weird"]) expect(homeFor(r)).toBe("/");
   });
 });
 

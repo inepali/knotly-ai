@@ -1,4 +1,4 @@
-// src/components/ui/SiteFooter.tsx — Pocket-style footer for pages outside the chat.
+// src/components/ui/SiteFooter.tsx — Pocket-style footer for the public pages.
 import Link from "next/link";
 import { Container } from "./Container";
 import { Logomark } from "./Logo";
@@ -12,12 +12,12 @@ export function SiteFooter() {
             <Logomark className="h-10 w-10 flex-none" />
             <div className="ml-4">
               <p className="text-base font-semibold">Knotly</p>
-              <p className="text-sm text-gray-600">Wedding planning in the Carolinas, by chat.</p>
+              <p className="text-sm text-gray-600">Wedding planning in the Carolinas.</p>
             </div>
           </div>
           <nav className="flex gap-8 text-sm text-gray-700">
-            <Link href="/chat" className="hover:text-gray-900">Plan with Knotly</Link>
-            <Link href="/search" className="hover:text-gray-900">Find vendors</Link>
+            <Link href="/signup" className="hover:text-gray-900">Get started</Link>
+            <Link href="/signin" className="hover:text-gray-900">Sign in</Link>
             <Link href="/inbox" className="hover:text-gray-900">Messages</Link>
           </nav>
         </div>

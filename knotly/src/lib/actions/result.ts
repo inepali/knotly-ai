@@ -29,12 +29,8 @@ export function parseInput<S extends z.ZodType>(
   return fail(`${where}${issue.message}`);
 }
 
-/** Chat-tool result: `{ ok: true, ...data }`, or the failure as-is. */
+/** `{ ok: true, ...data }`, or the failure as-is (for callers that want the data inline, like the Help tool). */
 export function flat<T extends object, E extends object>(r: ActionResult<T, E>) {
   return r.ok ? { ok: true as const, ...r.data } : r;
 }
 
-/** Chat-tool result for tools that never had an `ok` flag: the data itself, or the failure. */
-export function bare<T, E extends object>(r: ActionResult<T, E>) {
-  return r.ok ? r.data : r;
-}

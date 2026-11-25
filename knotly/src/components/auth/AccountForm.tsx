@@ -1,4 +1,5 @@
-// src/components/chat/cards/AccountCard.tsx
+// src/components/auth/AccountForm.tsx — sign up, sign in and reset a password, for everyone.
+// Talks to /api/auth/*; the role is chosen only when creating an account.
 "use client";
 import { useState } from "react";
 import { fieldClasses } from "@/components/ui/fields";
@@ -8,9 +9,6 @@ import { fieldClasses } from "@/components/ui/fields";
 type Mode = "signup" | "code" | "signin" | "forgot" | "reset" | "done";
 type Method = "email" | "phone";
 export type Role = "couple" | "vendor" | "admin";
-
-// Remembered so a later visit (signed out, same browser) is offered sign-in, not sign-up.
-export const HAS_ACCOUNT_KEY = "knotly:has-account";
 
 const TITLES: Record<Exclude<Mode, "done">, string> = {
   signup: "Create your Knotly account",
@@ -27,9 +25,7 @@ const SUBMIT: Record<Exclude<Mode, "done">, string> = {
   reset: "Reset password",
 };
 
-// One card for everyone: couples, vendors and admins sign in the same way.
-// The role is chosen only when creating an account.
-export default function AccountCard({
+export default function AccountForm({
   initialMode,
   initialRole = "couple",
   reason,
@@ -38,7 +34,7 @@ export default function AccountCard({
   initialMode: "signup" | "signin";
   initialRole?: "couple" | "vendor";
   reason: string;
-  onDone: (msg: string, role: Role) => void;
+  onDone: (role: Role) => void;
 }) {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [role, setRole] = useState<"couple" | "vendor">(initialRole);
@@ -78,18 +74,10 @@ export default function AccountCard({
     setConfirm("");
   }
 
-  function finish(msg: string, signedInAs: Role) {
-    try {
-      localStorage.setItem(HAS_ACCOUNT_KEY, "1");
-    } catch {}
+  function finish(signedInAs: Role) {
     setMode("done");
-    onDone(msg, signedInAs);
+    onDone(signedInAs);
   }
-
-  const signedInMessage = (r: { conflicts?: unknown[] }, base: string) =>
-    r.conflicts?.length
-      ? `${base} My saved plan differs from what I said today: ${JSON.stringify(r.conflicts)}`
-      : base;
 
   async function requestReset() {
     const r = await post("/api/auth/reset/request", {});
@@ -107,18 +95,17 @@ export default function AccountCard({
       else if (r.exists) go("signin", "Looks like you already have an account. Sign in to continue.");
     } else if (mode === "code") {
       const r = await post("/api/auth/verify", { code: code.trim(), password, acceptedTerms: terms, role });
-      if (r.ok)
-        finish(r.role === "vendor" ? "I created my vendor account." : "I created my account.", r.role ?? role);
+      if (r.ok) finish(r.role ?? role);
     } else if (mode === "signin") {
       const r = await post("/api/auth/signin", { password });
-      if (r.ok) finish(signedInMessage(r, "I signed in."), r.role ?? "couple");
+      if (r.ok) finish(r.role ?? "couple");
     } else if (mode === "forgot") {
       await requestReset();
     } else if (mode === "reset") {
       if (password.length < 8) return setError("Use at least 8 characters for your password.");
       if (password !== confirm) return setError("The passwords don't match.");
       const r = await post("/api/auth/reset/confirm", { code: code.trim(), password });
-      if (r.ok) finish(signedInMessage(r, "I reset my password and signed in."), r.role ?? "couple");
+      if (r.ok) finish(r.role ?? "couple");
     }
   }
 

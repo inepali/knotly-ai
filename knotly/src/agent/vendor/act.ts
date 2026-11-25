@@ -104,7 +104,7 @@ export async function act(
     await emailOf(couple.couple_projects.couple_id),
     `New reply from ${ctx.vendor.business_name}`,
     `${ctx.vendor.business_name} replied to your inquiry.`,
-    `${APP}/chat`
+    `${APP}/client/dashboard/vendors`
   );
 }
 

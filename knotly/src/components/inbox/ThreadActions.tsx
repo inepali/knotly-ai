@@ -6,7 +6,7 @@ import { supabaseBrowser } from "@/lib/supabase/browser";
 import { fieldClasses } from "@/components/ui/fields";
 
 // Each action calls `onDone` when it finishes; by default that re-renders the page
-// (the /inbox pages), while the chat's Inbox tab passes its own refetch.
+// (the /inbox pages); a caller can pass its own refetch instead.
 
 // Opening a conversation marks the other side's messages read. Done in the browser
 // (not during the server render) so link prefetching can't mark things read.
@@ -70,7 +70,7 @@ export function ReplyBox({ threadId, to, onDone }: { threadId: string; to: strin
 }
 
 // A draft waiting for approval: shows the agent's notes (owner only), lets the owner
-// edit it, and sends it. Used by the chat's Messages tab and the /inbox pages.
+// edit it, and sends it. Used by the /inbox pages.
 export function DraftReview({
   id,
   to,

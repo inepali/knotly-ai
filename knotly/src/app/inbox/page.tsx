@@ -16,7 +16,7 @@ export default async function InboxPage(props: PageProps<"/inbox">) {
 
   const sb = await supabaseServer();
   const viewer = await getViewer(sb);
-  if (!viewer) redirect("/chat"); // guests sign in from the chat first
+  if (!viewer) redirect("/signin");
 
   const items = await loadMailbox(sb, viewer.side);
   const conversations = groupConversations(items);

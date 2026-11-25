@@ -1,4 +1,4 @@
-// src/lib/actions/knowledge.ts — a vendor's knowledge base (shared by chat tools and forms).
+// src/lib/actions/knowledge.ts — a vendor's knowledge base (shared by the dashboard forms).
 import { z } from "zod";
 import { after } from "next/server";
 import { ingestKnowledge, kindOfUrl, parsePublicUrl, searchKnowledge } from "@/lib/knowledge";

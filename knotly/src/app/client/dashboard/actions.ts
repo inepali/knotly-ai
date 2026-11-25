@@ -1,6 +1,6 @@
 "use server";
 // Server actions behind the couple dashboard's forms. Each one re-checks who is signed in,
-// then calls the shared function in src/lib/actions (the same one the chat tools use).
+// then calls the shared function in src/lib/actions (the shared server functions).
 import { revalidatePath } from "next/cache";
 import { coupleOrError } from "@/lib/couple-session";
 import { saveWeddingForm, type SaveWeddingFormInput } from "@/lib/actions/wedding";
