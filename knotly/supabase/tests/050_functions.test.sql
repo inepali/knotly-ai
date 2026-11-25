@@ -1,28 +1,27 @@
 -- Public website + RSVP functions, Help cap, SMS usage, triggers, storage folder policies.
 
 create function tap_tests.test_help_cap() returns setof text language plpgsql as $$
-declare i int; ok_count int := 0; last boolean; st text;
+declare i int; ok_count int := 0; last boolean; st text; v int;
 begin
-  perform tap_tests.login(tap_tests.id('a1'));
+  -- The server calls take_help_quota with the service role; the test runner stands in for it.
   for i in 1..31 loop
-    last := take_help_message();
+    last := take_help_quota('u:' || tap_tests.id('a1'), 30);
     if last then ok_count := ok_count + 1; end if;
   end loop;
-  perform tap_tests.logout();
   return next is(ok_count, 30, '30 Help messages allowed per day');
   return next is(last, false, 'the 31st is refused');
 
   perform tap_tests.login(tap_tests.id('a1'));
-  st := tap_tests.sqlstate_of(format(
-    'update help_usage set messages = 0 where profile_id = %L', tap_tests.id('a1')));
+  st := tap_tests.sqlstate_of('select take_help_quota(''u:x'', 30)');
+  v := tap_tests.n('select 1 from help_quota_usage');
   perform tap_tests.logout();
-  return next is((select messages from help_usage where profile_id = tap_tests.id('a1')), 30,
-                 'couple cannot reset own count');
+  return next is(st, '42501', 'a couple cannot call take_help_quota directly');
+  return next is(v, 0, 'a couple cannot read or reset the counters');
 
   perform tap_tests.login_anon();
-  st := tap_tests.sqlstate_of('select take_help_message()');
+  st := tap_tests.sqlstate_of('select take_help_quota(''ip:x'', 30)');
   perform tap_tests.logout();
-  return next is(st, '42501', 'anon cannot use the Help assistant');
+  return next is(st, '42501', 'anon cannot call take_help_quota directly');
 end $$;
 
 create function tap_tests.test_public_website() returns setof text language plpgsql as $$

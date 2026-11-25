@@ -71,7 +71,7 @@ insert into couple_projects (id, couple_id, partner_names, wedding_date, metro_s
   (tap_tests.id('b2'), tap_tests.id('a2'), 'Jo & Lee', '2027-06-05', 'charlotte-nc');
 
 -- Couple A's planning data (one row per couple-owned table)
-insert into needs (project_id, category) values (tap_tests.id('b1'), 'photographer');
+insert into project_needs (project_id, category) values (tap_tests.id('b1'), 'photographer');
 insert into checklist_items (project_id, title) values (tap_tests.id('b1'), 'Book a photographer');
 insert into personal_events (project_id, title, starts_at) values (tap_tests.id('b1'), 'Cake tasting', now());
 insert into guests (id, project_id, first_name, last_name, household, plus_one_allowed) values

@@ -315,12 +315,15 @@ for (const v of vendors) {
       .select("id")
       .single();
     if (error) throw new Error(`couple project: ${error.message}`);
-    await sb.from("needs").insert(
-      [
-        { category: "photographer", budget: 5000, priority: 1 },
-        { category: "dj", budget: 2000, priority: 2 },
-        { category: "florist", budget: 3500, priority: 2 },
-      ].map((n) => ({ ...n, project_id: p.id }))
+    const needs = [
+      { category: "photographer", budget: 5000, priority: 1 },
+      { category: "dj", budget: 2000, priority: 2 },
+      { category: "florist", budget: 3500, priority: 2 },
+    ];
+    await sb.from("couple_projects").update({ needs: needs.map((n) => n.category) }).eq("id", p.id);
+    await sb.from("project_needs").upsert(
+      needs.map((n) => ({ ...n, project_id: p.id })),
+      { onConflict: "project_id,category" }
     );
   }
   console.log(created ? "✓" : "↻", "couple@test.dev");

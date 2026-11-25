@@ -1,3 +1,5 @@
+@AGENTS.md
+
 # Knotly — rules for Claude Code
 
 Knotly (knotly.net) is a wedding marketplace. This repo (`knotly-ai`) is the EXISTING app being

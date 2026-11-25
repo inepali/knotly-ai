@@ -1,5 +1,6 @@
 // src/contracts/db.ts — database shapes shared by the db, ai and ui agents.
-// CONTRACT_VERSION: 1 (2026-10-05) — Phase 0 schema (bookings, agent, billing, organize, guests).
+// CONTRACT_VERSION: 2 (2026-11-25) — `needs` folded into form-first `project_needs` (no need_id links).
+// v1 (2026-10-05) — Phase 0 schema (bookings, agent, billing, organize, guests).
 // Owned by the db agent. Row types come from the generated src/lib/supabase/types.ts
 // (`pnpm types`); the enums below mirror the table check constraints.
 import type { Database } from "@/lib/supabase/types";
@@ -26,7 +27,7 @@ export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 // Statuses that count as "open" for the one_open_booking index (one per couple + vendor).
 export const CLOSED_BOOKING_STATUSES = ["declined", "expired", "cancelled", "completed"] as const;
 
-// needs.status
+// project_needs.status
 export const NEED_STATUSES = ["not_started", "requested", "offer_received", "booked"] as const;
 export type NeedStatus = (typeof NEED_STATUSES)[number];
 
@@ -82,7 +83,7 @@ export const TIMELINE_VISIBILITY = ["everyone", "party", "couple"] as const;
 export const DOCUMENT_TAGS = ["contract", "invoice", "venue", "inspiration", "other"] as const;
 export const RSVP_STATUSES = ["awaiting", "attending", "declined"] as const;
 export const REGISTRY_KINDS = ["store", "cash_fund"] as const;
-export const HELP_DAILY_LIMIT = 30; // enforced in take_help_message()
+export const HELP_DAILY_LIMIT = 30; // enforced in take_help_quota() via src/lib/help-limit.ts
 
 // Storage buckets and path conventions (first folder is checked by policies).
 export const BUCKETS = {

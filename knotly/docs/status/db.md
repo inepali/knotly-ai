@@ -21,8 +21,20 @@
 - `scripts/seed.mts`: idempotent; packages with hours/deliverables/retainers, 9 KB FAQs with
   search pieces, `couple@test.dev` with a saved wedding + 3 needs. Run on knotly-dev.
 
+## Form-first reconciliation (2026-11-25, branch agent/db-form-first)
+- Merged onto form-first `main`. Phase 0 migration files keep their 20261005 names (already
+  applied on knotly-dev).
+- `20261125130000_needs_into_project_needs.sql`: `project_needs` gains priority, must_haves,
+  notes, status, booking_id, created_at; `needs` rows copied in; `bookings.need_id` and
+  `checklist_items.need_id` dropped; `needs` dropped. Also drops the unused Phase 0
+  `help_usage` + `take_help_message()` (form-first `help_quota_usage` + `take_help_quota()` is live).
+- Tests, seed, types and `src/contracts/db.ts` (CONTRACT_VERSION 2) updated to match.
+- To do on knotly-dev: `pnpm migrate`, `pnpm types`, `bash supabase/tests/run.sh`.
+  On a database that never had Phase 0 (e.g. prod), the 20261005 files are older than the
+  applied Nov ones, so the first push needs `supabase db push --include-all`.
+
 ## In progress
-- Phase 0 PR open; waiting for review.
+- PR for agent/db-form-first open; waiting for review.
 
 ## Next (Phase 1)
 - Search and booking queries; Realtime is already on for bookings/messages/activity_events.

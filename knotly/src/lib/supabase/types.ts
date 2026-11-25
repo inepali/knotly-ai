@@ -157,7 +157,6 @@ export type Database = {
           hold_expires_at: string | null
           hours: number | null
           id: string
-          need_id: string | null
           note: string | null
           package_id: string
           price: number
@@ -178,7 +177,6 @@ export type Database = {
           hold_expires_at?: string | null
           hours?: number | null
           id?: string
-          need_id?: string | null
           note?: string | null
           package_id: string
           price: number
@@ -199,7 +197,6 @@ export type Database = {
           hold_expires_at?: string | null
           hours?: number | null
           id?: string
-          need_id?: string | null
           note?: string | null
           package_id?: string
           price?: number
@@ -213,13 +210,6 @@ export type Database = {
           venue?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "bookings_need_id_fkey"
-            columns: ["need_id"]
-            isOneToOne: false
-            referencedRelation: "needs"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "bookings_package_id_fkey"
             columns: ["package_id"]
@@ -330,7 +320,6 @@ export type Database = {
           done_at: string | null
           due_date: string | null
           id: string
-          need_id: string | null
           project_id: string
           snoozed_until: string | null
           status: string
@@ -344,7 +333,6 @@ export type Database = {
           done_at?: string | null
           due_date?: string | null
           id?: string
-          need_id?: string | null
           project_id: string
           snoozed_until?: string | null
           status?: string
@@ -358,7 +346,6 @@ export type Database = {
           done_at?: string | null
           due_date?: string | null
           id?: string
-          need_id?: string | null
           project_id?: string
           snoozed_until?: string | null
           status?: string
@@ -367,13 +354,6 @@ export type Database = {
           vendor_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "checklist_items_need_id_fkey"
-            columns: ["need_id"]
-            isOneToOne: false
-            referencedRelation: "needs"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "checklist_items_project_id_fkey"
             columns: ["project_id"]
@@ -873,32 +853,6 @@ export type Database = {
           },
         ]
       }
-      help_usage: {
-        Row: {
-          day: string
-          messages: number
-          profile_id: string
-        }
-        Insert: {
-          day?: string
-          messages?: number
-          profile_id: string
-        }
-        Update: {
-          day?: string
-          messages?: number
-          profile_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "help_usage_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       lead_credit_ledger: {
         Row: {
           created_at: string | null
@@ -1050,13 +1004,13 @@ export type Database = {
         }
         Relationships: []
       }
-      needs: {
+      project_needs: {
         Row: {
           booking_id: string | null
           budget: number | null
           category: string
-          created_at: string | null
-          id: string
+          created_at: string
+          estimate_cap: number
           must_haves: string[]
           notes: string | null
           priority: number
@@ -1067,8 +1021,8 @@ export type Database = {
           booking_id?: string | null
           budget?: number | null
           category: string
-          created_at?: string | null
-          id?: string
+          created_at?: string
+          estimate_cap?: number
           must_haves?: string[]
           notes?: string | null
           priority?: number
@@ -1079,8 +1033,8 @@ export type Database = {
           booking_id?: string | null
           budget?: number | null
           category?: string
-          created_at?: string | null
-          id?: string
+          created_at?: string
+          estimate_cap?: number
           must_haves?: string[]
           notes?: string | null
           priority?: number
@@ -1089,21 +1043,21 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "needs_booking_id_fkey"
+            foreignKeyName: "project_needs_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "needs_category_fkey"
+            foreignKeyName: "project_needs_category_fkey"
             columns: ["category"]
             isOneToOne: false
             referencedRelation: "vendor_categories"
             referencedColumns: ["slug"]
           },
           {
-            foreignKeyName: "needs_project_id_fkey"
+            foreignKeyName: "project_needs_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "couple_projects"
@@ -3300,7 +3254,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      take_help_message: { Args: never; Returns: boolean }
       unlockrows: { Args: { "": string }; Returns: number }
       updategeometrysrid: {
         Args: {
