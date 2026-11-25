@@ -58,16 +58,22 @@ export function SiteHeader() {
                     </PopoverButton>
                   ))}
                 </div>
-                <div className="mt-8">
-                  <Button href="/chat" color="cyan" className="w-full">
-                    Start planning
+                <div className="mt-8 space-y-3">
+                  <Button href="/signup" color="cyan" className="w-full">
+                    Get started
+                  </Button>
+                  <Button href="/signin" variant="outline" className="w-full">
+                    Sign in
                   </Button>
                 </div>
               </PopoverPanel>
             </Popover>
+            <Link href="/signin" className="text-sm text-gray-700 hover:text-gray-900 max-lg:hidden">
+              Sign in
+            </Link>
             <div className="max-lg:hidden">
-              <Button href="/chat" color="cyan">
-                Start planning
+              <Button href="/signup" color="cyan">
+                Get started
               </Button>
             </div>
           </div>
