@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getMyWedding, saveWeddingDetails } from "./wedding";
+import { getMyWedding, saveWeddingDetails, saveWeddingForm } from "./wedding";
 import { mockSb } from "./test-utils";
 
 describe("saveWeddingDetails", () => {
@@ -48,5 +48,54 @@ describe("getMyWedding", () => {
   it("returns {empty:true} when nothing is saved", async () => {
     const { sb } = mockSb({ couple_projects: { data: null } });
     expect(await getMyWedding(sb, "u1")).toEqual({ ok: true, data: { empty: true } });
+  });
+});
+
+describe("saveWeddingForm", () => {
+  it("rejects a budget that isn't a whole positive number", async () => {
+    const { sb } = mockSb();
+    expect((await saveWeddingForm(sb, "u1", { needBudgets: [{ category: "dj", budget: -5 }] })).ok).toBe(false);
+    expect((await saveWeddingForm(sb, "u1", { needBudgets: [{ category: "unicorns", budget: 5 }] })).ok).toBe(false);
+  });
+
+  it("keeps project_needs in step: drops removed needs, adds new ones, sets budgets", async () => {
+    const { sb, called } = mockSb({
+      couple_projects: [{ data: { id: "p1" } }, { data: { id: "p1", needs: ["venue", "florist"] } }],
+      project_needs: { data: [{ category: "venue" }, { category: "dj" }] },
+    });
+    const r = await saveWeddingForm(sb, "u1", {
+      needs: ["venue", "florist"],
+      needBudgets: [{ category: "venue", budget: 9000 }, { category: "florist", budget: null }],
+    });
+    expect(r.ok).toBe(true);
+    expect(called("project_needs", "in")[0].args).toEqual(["category", ["dj"]]);
+    expect(called("project_needs", "delete")).toHaveLength(1);
+    expect(called("project_needs", "upsert")[0].args[0]).toEqual([
+      { project_id: "p1", category: "venue" },
+      { project_id: "p1", category: "florist" },
+    ]);
+    expect(called("project_needs", "update").map((c) => c.args[0])).toEqual([{ budget: 9000 }, { budget: null }]);
+  });
+
+  it("leaves project_needs alone when the form sends no needs", async () => {
+    const { sb, calls } = mockSb({ couple_projects: [{ data: { id: "p1" } }, { data: { id: "p1" } }] });
+    await saveWeddingForm(sb, "u1", { venue: "Crystal Ballroom" });
+    expect(calls.some((c) => c.table === "project_needs")).toBe(false);
+  });
+
+  it("returns a project_needs error", async () => {
+    const { sb } = mockSb({
+      couple_projects: [{ data: { id: "p1" } }, { data: { id: "p1" } }],
+      project_needs: { error: { message: "rls" } },
+    });
+    expect(await saveWeddingForm(sb, "u1", { needs: ["venue"] })).toEqual({ ok: false, error: "rls" });
+  });
+});
+
+describe("saveWeddingDetails (chat) also syncs needs", () => {
+  it("writes project_needs when needs are sent", async () => {
+    const { sb, called } = mockSb({ couple_projects: [{ data: null }, { data: { id: "p1" } }], project_needs: { data: [] } });
+    await saveWeddingDetails(sb, "u1", { needs: ["dj"] });
+    expect(called("project_needs", "upsert")).toHaveLength(1);
   });
 });

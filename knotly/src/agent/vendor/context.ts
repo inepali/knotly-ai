@@ -86,8 +86,14 @@ export async function loadVendorCtx(threadId: string) {
 
   const wedding = project.data!;
   const lastCoupleMessage =
-    [...(msgs.data ?? [])].reverse().find((m) => m.sender.startsWith("couple"))
-      ?.body ?? "";
+    [...(msgs.data ?? [])]
+      .reverse()
+      // A posted project arrives as a system "project_post" message instead of a couple's inquiry.
+      .find(
+        (m) =>
+          m.sender.startsWith("couple") ||
+          (m.payload as { type?: string } | null)?.type === "project_post"
+      )?.body ?? "";
   // What the vendor taught their assistant (site, FAQs, PDFs) that bears on this message.
   const knowledge = await searchKnowledge(vid, lastCoupleMessage);
 

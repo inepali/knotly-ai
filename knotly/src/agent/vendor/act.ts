@@ -76,11 +76,19 @@ export async function act(
     });
     await db.from("threads").update({ status: "held" }).eq("id", ctx.threadId);
   }
-  if (d.responseType === "decline")
+  if (d.responseType === "decline") {
     await db
       .from("threads")
       .update({ status: "declined" })
       .eq("id", ctx.threadId);
+    // Declining a posted project is silent: the couple never hears from vendors who passed.
+    const { data: t } = await db
+      .from("threads")
+      .select("origin")
+      .eq("id", ctx.threadId)
+      .single();
+    if (t?.origin === "post") return;
+  }
 
   await db
     .from("messages")

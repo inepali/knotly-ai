@@ -21,6 +21,15 @@ export const SaveWeddingDetailsInput = z.object({
 });
 export type SaveWeddingDetailsInput = z.input<typeof SaveWeddingDetailsInput>;
 
+// The My Wedding form also sets an optional budget per needed category. `budget: null` clears it.
+export const SaveWeddingFormInput = SaveWeddingDetailsInput.extend({
+  needBudgets: z
+    .array(z.object({ category: Category, budget: z.number().int().positive().nullable() }))
+    .max(40)
+    .optional(),
+});
+export type SaveWeddingFormInput = z.input<typeof SaveWeddingFormInput>;
+
 /** The couple's project row (RLS keeps it to their own), or null. */
 export async function getProject(sb: Sb, userId: string) {
   const { data } = await sb
@@ -46,11 +55,42 @@ const WEDDING_FIELDS = [
   "needs",
 ];
 
-export async function saveWeddingDetails(sb: Sb, userId: string, input: unknown) {
-  const p = parseInput(SaveWeddingDetailsInput, input);
-  if (!p.ok) return p;
-  const i = p.data;
+type Needs = { needs?: string[]; needBudgets?: { category: string; budget: number | null }[] };
 
+// Keep project_needs (one row per needed category, with its budget and estimate cap) in
+// step with what was saved. A removed need loses its row; a kept one keeps its cap.
+async function syncNeeds(sb: Sb, projectId: string, { needs, needBudgets }: Needs) {
+  if (needs) {
+    const { data: rows } = await sb.from("project_needs").select("category").eq("project_id", projectId);
+    const gone = (rows ?? []).map((r: { category: string }) => r.category).filter((c) => !needs.includes(c));
+    if (gone.length) {
+      const { error } = await sb.from("project_needs").delete().eq("project_id", projectId).in("category", gone);
+      if (error) return error.message;
+    }
+    if (needs.length) {
+      const { error } = await sb
+        .from("project_needs")
+        .upsert(
+          needs.map((category) => ({ project_id: projectId, category })),
+          { onConflict: "project_id,category", ignoreDuplicates: true }
+        );
+      if (error) return error.message;
+    }
+  }
+  for (const b of needBudgets ?? []) {
+    const { error } = await sb
+      .from("project_needs")
+      .update({ budget: b.budget })
+      .eq("project_id", projectId)
+      .eq("category", b.category);
+    if (error) return error.message;
+  }
+  return null;
+}
+
+type Saved = z.output<typeof SaveWeddingDetailsInput> & Pick<Needs, "needBudgets">;
+
+async function persist(sb: Sb, userId: string, i: Saved) {
   let metro_slug: string | undefined;
   if (i.metro) {
     const m = await resolveMetro(sb, i.metro);
@@ -82,8 +122,26 @@ export async function saveWeddingDetails(sb: Sb, userId: string, input: unknown)
         .single();
   if (error) return fail(error.message);
 
+  if (i.needs || i.needBudgets?.length) {
+    const needsError = await syncNeeds(sb, data.id, i);
+    if (needsError) return fail(needsError);
+  }
+
   const missing = WEDDING_FIELDS.filter(
     (k) => !data[k] || (Array.isArray(data[k]) && data[k].length === 0)
   );
   return ok({ wedding: data, missing });
+}
+
+export async function saveWeddingDetails(sb: Sb, userId: string, input: unknown) {
+  const p = parseInput(SaveWeddingDetailsInput, input);
+  if (!p.ok) return p;
+  return persist(sb, userId, p.data);
+}
+
+/** The My Wedding form: the same save, plus a budget per needed category. */
+export async function saveWeddingForm(sb: Sb, userId: string, input: unknown) {
+  const p = parseInput(SaveWeddingFormInput, input);
+  if (!p.ok) return p;
+  return persist(sb, userId, p.data);
 }

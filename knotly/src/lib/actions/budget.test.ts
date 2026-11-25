@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 vi.mock("@/lib/budget", () => ({ loadBudget: vi.fn(async () => ({ lines: [] })) }));
-import { getBudget, planBudget, recordBooking } from "./budget";
+import { applyDefaultBudgetSplit, getBudget, planBudget, recordBooking } from "./budget";
 import { mockSb, UUID } from "./test-utils";
 
 describe("planBudget", () => {
@@ -77,5 +77,27 @@ describe("recordBooking", () => {
 describe("getBudget", () => {
   it("returns the loaded budget", async () => {
     expect(await getBudget(mockSb().sb, "u1")).toEqual({ ok: true, data: { lines: [] } });
+  });
+});
+
+describe("applyDefaultBudgetSplit", () => {
+  it("needs wedding details, a total budget and some needs", async () => {
+    expect((await applyDefaultBudgetSplit(mockSb({ couple_projects: { data: null } }).sb, "u1")).ok).toBe(false);
+    const noTotal = mockSb({ couple_projects: { data: { id: "p1", budget_total: null } } });
+    expect(await applyDefaultBudgetSplit(noTotal.sb, "u1")).toEqual({ ok: false, error: "Add your total budget first." });
+    const noNeeds = mockSb({ couple_projects: { data: { id: "p1", budget_total: 20000 } }, project_needs: { data: [] } });
+    expect(await applyDefaultBudgetSplit(noNeeds.sb, "u1")).toEqual({ ok: false, error: "Choose the vendor types you need first." });
+  });
+
+  it("splits the total as a suggestion, without overwriting the couple's own targets", async () => {
+    const { sb, called } = mockSb({
+      couple_projects: { data: { id: "p1", budget_total: 20000 } },
+      project_needs: { data: [{ category: "venue" }, { category: "photographer" }] },
+      budget_items: { data: [{ category: "venue", label: null, planned_by: "couple" }] },
+    });
+    const r = await applyDefaultBudgetSplit(sb, "u1");
+    expect(r.ok && r.data.keptCoupleTargets).toEqual(["venue"]);
+    const rows = called("budget_items", "upsert")[0].args[0] as { category: string; planned_by: string }[];
+    expect(rows.map((x) => [x.category, x.planned_by])).toEqual([["photographer", "ai"]]);
   });
 });

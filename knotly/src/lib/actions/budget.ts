@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { Category } from "@/agent/shared";
 import { loadBudget } from "@/lib/budget";
+import { defaultBudgetSplit } from "@/lib/budget-split";
 import { getProject } from "./wedding";
 import { fail, ok, parseInput, type Sb } from "./result";
 
@@ -91,4 +92,18 @@ export async function recordBooking(sb: Sb, userId: string, input: unknown) {
   );
   if (error) return fail(error.message);
   return ok({ budget: await loadBudget(sb, userId) });
+}
+
+/** The non-AI "plan my budget": split the total across the needed categories. Never overwrites the couple's own targets. */
+export async function applyDefaultBudgetSplit(sb: Sb, userId: string) {
+  const wedding = await getProject(sb, userId);
+  if (!wedding) return fail("Save wedding details first.");
+  if (!wedding.budget_total) return fail("Add your total budget first.");
+  const { data: needs } = await sb.from("project_needs").select("category").eq("project_id", wedding.id);
+  const categories = (needs ?? []).map((n: { category: string }) => n.category);
+  if (!categories.length) return fail("Choose the vendor types you need first.");
+  return planBudget(sb, userId, {
+    allocations: defaultBudgetSplit(wedding.budget_total, categories),
+    fromCouple: false,
+  });
 }
