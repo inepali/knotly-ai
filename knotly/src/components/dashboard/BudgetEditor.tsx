@@ -163,6 +163,7 @@ export default function BudgetEditor({ budget }: { budget: Budget | null }) {
 
       <AddBudgetModal
         open={adding}
+        existing={lines.map((l) => ({ category: l.category, label: l.label }))}
         disabled={pending}
         error={error}
         onClose={() => {
@@ -242,12 +243,14 @@ function BookForm({ disabled, onSave, onCancel }: { disabled: boolean; onSave: (
 
 function AddBudgetModal({
   open,
+  existing,
   disabled,
   error,
   onClose,
   onAdd,
 }: {
   open: boolean;
+  existing: { category: string; label: string | null }[];
   disabled: boolean;
   error: string;
   onClose: () => void;
@@ -268,7 +271,14 @@ function AddBudgetModal({
     } else if (!open && d.open) d.close();
   }, [open]);
 
-  const valid = whole(amount) != null && (category !== "other" || label.trim() !== "");
+  // A vendor type already in the list can't be added twice (edit its target instead).
+  const name = category === "other" ? label.trim() : categoryLabel(category);
+  const duplicate = existing.some((l) =>
+    category === "other"
+      ? l.category === "other" && (l.label ?? "").toLowerCase() === label.trim().toLowerCase() && label.trim() !== ""
+      : l.category === category
+  );
+  const valid = whole(amount) != null && (category !== "other" || label.trim() !== "") && !duplicate;
   return (
     <dialog
       ref={ref}
@@ -315,6 +325,11 @@ function AddBudgetModal({
             autoFocus
           />
         </label>
+        {duplicate && (
+          <p role="alert" className="text-sm text-amber-700">
+            {name} is already in your budget list. Use &ldquo;Change target&rdquo; on that row to update it.
+          </p>
+        )}
         {error && (
           <p role="alert" className="text-sm text-red-600">
             {error}
