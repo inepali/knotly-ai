@@ -21,5 +21,5 @@ export default async function VendorDashboardLayout({ children }: { children: Re
     { href: "/vendor/dashboard/agent", label: "Agent Settings" },
     { href: "/vendor/dashboard/availability", label: "Availability" },
   ];
-  return <DashboardShell links={links}>{children}</DashboardShell>;
+  return <DashboardShell links={links} help="vendor">{children}</DashboardShell>;
 }

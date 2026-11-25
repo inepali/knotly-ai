@@ -78,7 +78,15 @@ export default async function EstimatesPage() {
                     const q = r.quotes.filter((x) => x.status !== "declined" && x.status !== "expired").at(-1) ?? r.quotes.at(-1)!;
                     return (
                       <li key={r.id} className={`${panelClasses} flex flex-col p-5`}>
-                        <h3 className="font-semibold text-gray-900">{r.vendors?.business_name ?? "Vendor"}</h3>
+                        <h3 className="font-semibold text-gray-900">
+                          {r.vendors ? (
+                            <Link href={`/vendors/${r.vendors.id}`} className="hover:underline">
+                              {r.vendors.business_name}
+                            </Link>
+                          ) : (
+                            "Vendor"
+                          )}
+                        </h3>
                         <p className="mt-1 text-xs text-gray-500">{STATUS[r.status] ?? "Estimate received"}</p>
                         <p className="mt-3 text-sm text-gray-700">
                           {q.first_viewed_at

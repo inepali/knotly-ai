@@ -13,5 +13,5 @@ const links = [
 
 export default async function CoupleDashboardLayout({ children }: { children: React.ReactNode }) {
   await requireCouple();
-  return <DashboardShell links={links}>{children}</DashboardShell>;
+  return <DashboardShell links={links} help="couple">{children}</DashboardShell>;
 }

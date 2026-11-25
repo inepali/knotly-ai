@@ -14,3 +14,7 @@ const anthropic = createAnthropic({
 });
 
 export const chatModel = anthropic("claude-sonnet-5");
+
+// Help chat: a cheaper, faster Haiku-class model. chatModel stays for the Vendor Agent
+// and the chat that step 6 retires. HELP_MODEL overrides the id without a deploy.
+export const helpModel = anthropic(process.env.HELP_MODEL ?? "claude-haiku-5-5");
