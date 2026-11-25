@@ -41,6 +41,27 @@ export type CategorySlug = (typeof VENDOR_CATEGORIES)[number]["slug"];
 
 export const CATEGORY_SLUGS = VENDOR_CATEGORIES.map((c) => c.slug) as unknown as [CategorySlug, ...CategorySlug[]];
 
+// Services priced by the hour: the couple can say how many hours of coverage they want.
+export const HOURLY_CATEGORIES: ReadonlySet<string> = new Set([
+  "photographer",
+  "videographer",
+  "content_creator",
+  "photo_booth",
+  "dj",
+  "mc",
+  "live_band",
+  "ceremony_musicians",
+  "live_entertainer",
+  "live_painter",
+  "bartending",
+  "transportation",
+  "security",
+  "valet_parking",
+  "day_of_coordinator",
+  "hair_stylist",
+  "makeup_artist",
+]);
+
 const NAMES = new Map<string, string>(VENDOR_CATEGORIES.map((c) => [c.slug, c.name]));
 
 // "wedding_planner" → "Wedding Planner"; unknown values (e.g. a budget "other") are tidied up.

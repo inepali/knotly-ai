@@ -13,7 +13,7 @@ export default async function MyWeddingPage() {
     sb.from("metros").select("slug, name, state").order("name"),
   ]);
   const { data: needs } = project
-    ? await sb.from("project_needs").select("category, budget").eq("project_id", project.id)
+    ? await sb.from("project_needs").select("category, budget, service_hours").eq("project_id", project.id)
     : { data: [] };
 
   const initial: WeddingFormInitial = {
@@ -24,9 +24,10 @@ export default async function MyWeddingPage() {
     guestCount: project?.guest_count ?? null,
     budgetTotal: project?.budget_total ?? null,
     style: project?.style ?? "",
-    needs: (needs ?? []).map((n: { category: string; budget: number | null }) => ({
+    needs: (needs ?? []).map((n: { category: string; budget: number | null; service_hours: number | null }) => ({
       category: n.category,
       budget: n.budget,
+      hours: n.service_hours,
     })),
     postedAt: project?.posted_at ?? null,
   };

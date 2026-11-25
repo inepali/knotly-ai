@@ -8,7 +8,7 @@ export default async function BudgetPage() {
   const budget = await loadBudget(sb, userId);
   return (
     <div>
-      <h1 className="text-2xl font-semibold tracking-tight">Budget</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">My Budgets</h1>
       <p className="mt-1 text-sm text-gray-600">
         Set a target for each category, and mark a vendor as booked when you commit. Estimates from vendors show up on
         their category.

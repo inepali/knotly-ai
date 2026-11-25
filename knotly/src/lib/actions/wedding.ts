@@ -24,7 +24,13 @@ export type SaveWeddingDetailsInput = z.input<typeof SaveWeddingDetailsInput>;
 // The My Wedding form also sets an optional budget per needed category. `budget: null` clears it.
 export const SaveWeddingFormInput = SaveWeddingDetailsInput.extend({
   needBudgets: z
-    .array(z.object({ category: Category, budget: z.number().int().positive().nullable() }))
+    .array(
+      z.object({
+        category: Category,
+        budget: z.number().int().positive().nullable(),
+        hours: z.number().int().min(1).max(24).nullable().optional(), // hours of service wanted
+      })
+    )
     .max(40)
     .optional(),
 });
@@ -55,7 +61,7 @@ const WEDDING_FIELDS = [
   "needs",
 ];
 
-type Needs = { needs?: string[]; needBudgets?: { category: string; budget: number | null }[] };
+type Needs = { needs?: string[]; needBudgets?: { category: string; budget: number | null; hours?: number | null }[] };
 
 // Keep project_needs (one row per needed category, with its budget and estimate cap) in
 // step with what was saved. A removed need loses its row; a kept one keeps its cap.
@@ -80,7 +86,7 @@ async function syncNeeds(sb: Sb, projectId: string, { needs, needBudgets }: Need
   for (const b of needBudgets ?? []) {
     const { error } = await sb
       .from("project_needs")
-      .update({ budget: b.budget })
+      .update(b.hours === undefined ? { budget: b.budget } : { budget: b.budget, service_hours: b.hours })
       .eq("project_id", projectId)
       .eq("category", b.category);
     if (error) return error.message;

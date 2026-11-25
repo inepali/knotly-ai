@@ -8,7 +8,7 @@ const links = [
   { href: "/client/dashboard/my-wedding", label: "My Wedding" },
   { href: "/client/dashboard/vendors", label: "Estimates" },
   { href: "/inbox", label: "Messages" }, // the existing inbox, until it moves under the dashboard
-  { href: "/client/dashboard/budget", label: "Budget" },
+  { href: "/client/dashboard/budget", label: "My Budgets" },
 ];
 
 export default async function CoupleDashboardLayout({ children }: { children: React.ReactNode }) {

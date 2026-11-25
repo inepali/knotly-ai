@@ -35,7 +35,7 @@ type ProjectRow = {
   posted_at: string | null;
 };
 
-type NeedRow = { category: string; budget: number | null; estimate_cap: number };
+type NeedRow = { category: string; budget: number | null; estimate_cap: number; service_hours?: number | null };
 
 type PostThread = {
   id: string;
@@ -62,6 +62,7 @@ export function projectPostBody(p: ProjectRow, need: NeedRow) {
     `A couple is planning a wedding on ${when}${p.metro_slug ? ` near ${metroName(p.metro_slug)}` : ""}` +
       `${p.guest_count ? ` for about ${p.guest_count} guests` : ""}${p.style ? ` (style: ${p.style})` : ""}.`,
     `They're looking for a ${categoryLabel(need.category).toLowerCase()}` +
+      `${need.service_hours ? ` for about ${need.service_hours} hour${need.service_hours === 1 ? "" : "s"} of service` : ""}` +
       `${budget ? ` and have ${usd(budget)} in mind${need.budget ? " for this" : " in total for the wedding"}` : ""}.`,
     "Please send an estimate if you're available.",
   ].join(" ");
@@ -109,7 +110,7 @@ export async function postProject(sb: Sb, userId: string) {
 
   const { data: needs } = await sb
     .from("project_needs")
-    .select("category, budget, estimate_cap")
+    .select("category, budget, estimate_cap, service_hours")
     .eq("project_id", project.id);
   const missing = [
     !project.wedding_date && "your wedding date",
@@ -183,7 +184,7 @@ export async function requestMoreEstimates(sb: Sb, userId: string, input: unknow
 async function loadCategoryState(projectId: string) {
   const db = supabaseAdmin;
   const [{ data: needs }, { data: threads }] = await Promise.all([
-    db.from("project_needs").select("category, budget, estimate_cap").eq("project_id", projectId),
+    db.from("project_needs").select("category, budget, estimate_cap, service_hours").eq("project_id", projectId),
     db
       .from("threads")
       .select("id, status, queue_rank, vendors(category), quotes(id)")
