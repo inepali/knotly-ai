@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { setAvailability } from "./availability";
+import { saveConsultHours, setAvailability } from "./availability";
 import { mockSb } from "./test-utils";
 
 describe("setAvailability", () => {
@@ -25,5 +25,48 @@ describe("setAvailability", () => {
     await setAvailability(sb, "v1", { dates: ["2027-05-01"], status: "free" });
     expect(called("vendor_availability", "delete")).toHaveLength(1);
     expect(called("vendor_availability", "upsert")).toHaveLength(0);
+  });
+
+  it("reports database errors", async () => {
+    const bad = mockSb({ vendor_availability: { error: { message: "rls" } } });
+    expect(await setAvailability(bad.sb, "v1", { dates: ["2027-05-01"], status: "blocked" })).toEqual({ ok: false, error: "rls" });
+    expect(await setAvailability(bad.sb, "v1", { dates: ["2027-05-01"], status: "free" })).toEqual({ ok: false, error: "rls" });
+  });
+});
+
+describe("saveConsultHours", () => {
+  const window = { weekday: 2, startTime: "09:00", endTime: "12:00" };
+
+  it("rejects bad times, windows that end before they start, and bad weekdays", async () => {
+    const { sb, calls } = mockSb();
+    expect((await saveConsultHours(sb, "v1", { hours: [{ ...window, startTime: "9am" }] })).ok).toBe(false);
+    expect((await saveConsultHours(sb, "v1", { hours: [{ ...window, startTime: "13:00", endTime: "12:00" }] })).ok).toBe(false);
+    expect((await saveConsultHours(sb, "v1", { hours: [{ ...window, weekday: 7 }] })).ok).toBe(false);
+    expect((await saveConsultHours(sb, "v1", { hours: [], callsPerDay: 0 })).ok).toBe(false);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("replaces the windows and updates only the settings that were sent", async () => {
+    const { sb, called } = mockSb();
+    const r = await saveConsultHours(sb, "v1", { hours: [window], callLink: " https://zoom.us/j/1 ", callsPerDay: 3 });
+    expect(r).toEqual({ ok: true, data: { hours: 1 } });
+    expect(called("vendor_agent_settings", "update")[0].args[0]).toEqual({ call_link: "https://zoom.us/j/1", calls_per_day: 3 });
+    expect(called("consult_hours", "delete")).toHaveLength(1);
+    expect(called("consult_hours", "insert")[0].args[0]).toEqual([
+      { vendor_id: "v1", weekday: 2, start_time: "09:00", end_time: "12:00", timezone: "America/New_York", slot_minutes: 30 },
+    ]);
+  });
+
+  it("clears everything when no windows are sent, and skips settings if none sent", async () => {
+    const { sb, called, calls } = mockSb();
+    await saveConsultHours(sb, "v1", { hours: [] });
+    expect(called("consult_hours", "delete")).toHaveLength(1);
+    expect(called("consult_hours", "insert")).toHaveLength(0);
+    expect(calls.some((c) => c.table === "vendor_agent_settings")).toBe(false);
+  });
+
+  it("returns database errors", async () => {
+    const bad = mockSb({ consult_hours: { error: { message: "overlap" } } });
+    expect(await saveConsultHours(bad.sb, "v1", { hours: [window] })).toEqual({ ok: false, error: "overlap" });
   });
 });

@@ -66,3 +66,55 @@ export async function getAgentStats(sb: Sb, userId: string) {
         : null,
   });
 }
+
+export const RemoveRuleInput = z.object({ id: z.uuid("That rule doesn't exist.") });
+export type RemoveRuleInput = z.input<typeof RemoveRuleInput>;
+
+/** Turn a rule off. It's kept (inactive) so the agent's past decisions can still be explained. */
+export async function removeRule(sb: Sb, userId: string, input: unknown) {
+  const p = parseInput(RemoveRuleInput, input);
+  if (!p.ok) return p;
+  const { data, error } = await sb
+    .from("vendor_agent_rules")
+    .update({ active: false })
+    .eq("id", p.data.id)
+    .eq("vendor_id", userId)
+    .select("id");
+  if (error) return fail(error.message);
+  if (!data?.length) return fail("Rule not found.");
+  return ok({ removed: p.data.id });
+}
+
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** One plain-English line for a saved rule (kind + params as stored). */
+export function describeRule(kind: string, params: Record<string, unknown>): string {
+  const n = (k: string) => Number(params[k]);
+  switch (kind) {
+    case "price_floor":
+      return `Never quote less than $${n("amount").toLocaleString("en-US")}`;
+    case "max_discount":
+      return `Discount at most ${n("percent")}%`;
+    case "capacity_per_day":
+      return `Take at most ${n("max")} wedding${n("max") === 1 ? "" : "s"} per day`;
+    case "blackout_weekday": {
+      const months = Array.isArray(params.months)
+        ? (params.months as number[]).map((m) => MONTHS[m - 1]).join(", ")
+        : "";
+      return `Never available on ${WEEKDAYS[n("weekday")] ?? "?"}s${months ? ` in ${months}` : ""}`;
+    }
+    case "service_radius":
+      return `Only travel within ${n("miles")} miles`;
+    case "always_review": {
+      const field = {
+        guest_count: "guest count",
+        days_until_wedding: "days until the wedding",
+        budget_for_category: "budget for my category",
+      }[String(params.field)];
+      return `Ask me first when ${field ?? params.field} is ${params.op === ">" ? "over" : "under"} ${Number(params.value).toLocaleString("en-US")}`;
+    }
+    default:
+      return kind;
+  }
+}

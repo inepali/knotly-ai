@@ -190,3 +190,115 @@ export async function publishProfile(sb: Sb, userId: string, input: unknown, ctx
   await sb.from("vendors").update({ published: publish }).eq("id", userId);
   return ok({ published: publish });
 }
+
+// --- Editing what's already saved (forms; the chat tools only ever add) ---------------------
+
+const Id = z.uuid("That item doesn't exist.");
+
+export const UpdatePackageInput = z.object({
+  id: Id,
+  name: z.string().min(1).max(80).optional(),
+  description: z.string().max(800).nullable().optional(),
+  price: z.number().int().positive().optional(),
+  inclusions: z.array(z.string().max(120)).max(20).optional(),
+});
+export type UpdatePackageInput = z.input<typeof UpdatePackageInput>;
+
+export const UpdateAddOnInput = z.object({
+  id: Id,
+  name: z.string().min(1).max(80).optional(),
+  description: z.string().max(400).nullable().optional(),
+  price: z.number().int().min(0).optional(),
+});
+export type UpdateAddOnInput = z.input<typeof UpdateAddOnInput>;
+
+export const DeleteItemInput = z.object({ id: Id });
+export type DeleteItemInput = z.input<typeof DeleteItemInput>;
+
+const withoutId = ({ id: _id, ...rest }: { id: string } & Record<string, unknown>) =>
+  Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined));
+
+export async function updatePackage(sb: Sb, userId: string, input: unknown) {
+  const p = parseInput(UpdatePackageInput, input);
+  if (!p.ok) return p;
+  const patch = withoutId(p.data);
+  if (!Object.keys(patch).length) return fail("Nothing to change.");
+  const { data, error } = await sb
+    .from("vendor_packages")
+    .update(patch)
+    .eq("id", p.data.id)
+    .eq("vendor_id", userId)
+    .select("id, name, price");
+  if (error) return fail(error.message);
+  if (!data?.length) return fail("Package not found.");
+  await syncPrices(sb, userId);
+  reembed(userId);
+  return ok({ saved: data[0] });
+}
+
+export async function deletePackage(sb: Sb, userId: string, input: unknown) {
+  const p = parseInput(DeleteItemInput, input);
+  if (!p.ok) return p;
+  // A live listing needs at least one package (publishProfile enforces the same on the way in).
+  const v = await getVendor(sb, userId);
+  if (v?.published && v.vendor_packages.length <= 1)
+    return fail("Unpublish your listing before deleting your only package.");
+  const { data, error } = await sb
+    .from("vendor_packages")
+    .delete()
+    .eq("id", p.data.id)
+    .eq("vendor_id", userId)
+    .select("id");
+  if (error) return fail(error.message);
+  if (!data?.length) return fail("Package not found.");
+  await syncPrices(sb, userId);
+  reembed(userId);
+  return ok({ deleted: p.data.id });
+}
+
+export async function updateAddOn(sb: Sb, userId: string, input: unknown) {
+  const p = parseInput(UpdateAddOnInput, input);
+  if (!p.ok) return p;
+  const patch = withoutId(p.data);
+  if (!Object.keys(patch).length) return fail("Nothing to change.");
+  const { data, error } = await sb
+    .from("vendor_addons")
+    .update(patch)
+    .eq("id", p.data.id)
+    .eq("vendor_id", userId)
+    .select("id, name, price");
+  if (error) return fail(error.message);
+  if (!data?.length) return fail("Add-on not found.");
+  reembed(userId);
+  return ok({ saved: data[0] });
+}
+
+export async function deleteAddOn(sb: Sb, userId: string, input: unknown) {
+  const p = parseInput(DeleteItemInput, input);
+  if (!p.ok) return p;
+  const { data, error } = await sb
+    .from("vendor_addons")
+    .delete()
+    .eq("id", p.data.id)
+    .eq("vendor_id", userId)
+    .select("id");
+  if (error) return fail(error.message);
+  if (!data?.length) return fail("Add-on not found.");
+  reembed(userId);
+  return ok({ deleted: p.data.id });
+}
+
+export async function deleteTestimonial(sb: Sb, userId: string, input: unknown) {
+  const p = parseInput(DeleteItemInput, input);
+  if (!p.ok) return p;
+  const { data, error } = await sb
+    .from("testimonials")
+    .delete()
+    .eq("id", p.data.id)
+    .eq("vendor_id", userId)
+    .select("id");
+  if (error) return fail(error.message);
+  if (!data?.length) return fail("Review not found.");
+  reembed(userId);
+  return ok({ deleted: p.data.id });
+}
