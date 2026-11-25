@@ -149,14 +149,19 @@ export default function WeddingForm({ initial, metros }: { initial: WeddingFormI
                         <span className="truncate">{c.name}</span>
                       </label>
                       {on && (
-                        <input
-                          inputMode="numeric"
-                          aria-label={`${c.name} budget`}
-                          placeholder="Budget"
-                          value={needs[c.slug]}
-                          onChange={(e) => setNeeds((s) => ({ ...s, [c.slug]: e.target.value }))}
-                          className={`${fieldClasses} w-28 flex-none`}
-                        />
+                        <div className="relative w-24 flex-none">
+                          <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-sm text-gray-400">
+                            $
+                          </span>
+                          <input
+                            inputMode="numeric"
+                            aria-label={`${c.name} budget`}
+                            placeholder="0000"
+                            value={needs[c.slug]}
+                            onChange={(e) => setNeeds((s) => ({ ...s, [c.slug]: e.target.value.replace(/\D/g, "") }))}
+                            className={`${fieldClasses} pl-6 text-right tabular-nums`}
+                          />
+                        </div>
                       )}
                     </div>
                   );
