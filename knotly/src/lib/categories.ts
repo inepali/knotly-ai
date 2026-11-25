@@ -14,6 +14,8 @@ export const VENDOR_CATEGORIES = [
   { slug: "videographer", name: "Videographer", group: "Photo & video" },
   { slug: "content_creator", name: "Content Creator", group: "Photo & video" },
   { slug: "photo_booth", name: "Photo Booth", group: "Photo & video" },
+  { slug: "photo_editor", name: "Photo Editor", group: "Photo & video" },
+  { slug: "video_editor", name: "Video Editor", group: "Photo & video" },
   { slug: "dj", name: "DJ", group: "Music & entertainment" },
   { slug: "mc", name: "Master of Ceremonies", group: "Music & entertainment" },
   { slug: "live_band", name: "Live Band", group: "Music & entertainment" },

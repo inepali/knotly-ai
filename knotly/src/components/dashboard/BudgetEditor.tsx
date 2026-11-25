@@ -1,7 +1,7 @@
 // src/components/dashboard/BudgetEditor.tsx — the Budget page: totals, one row per category
 // with its target / booking, and forms to add or change them.
 "use client";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import clsx from "clsx";
 import { Button } from "@/components/ui/Button";
 import { fieldClasses, panelClasses } from "@/components/ui/fields";
@@ -23,6 +23,7 @@ export default function BudgetEditor({ budget }: { budget: Budget | null }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState("");
   const [booking, setBooking] = useState<string | null>(null); // line key being marked booked
+  const [adding, setAdding] = useState(false); // "Add budget" modal
 
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>, after?: () => void) => {
     setError("");
@@ -74,6 +75,13 @@ export default function BudgetEditor({ budget }: { budget: Budget | null }) {
           </p>
         </div>
       </section>
+
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-base font-semibold">Budget by vendor type</h2>
+        <Button type="button" color="cyan" disabled={pending} onClick={() => setAdding(true)}>
+          Add budget
+        </Button>
+      </div>
 
       {lines.length > 0 && (
         <ul className="divide-y divide-gray-200 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-900/5">
@@ -153,18 +161,26 @@ export default function BudgetEditor({ budget }: { budget: Budget | null }) {
         </ul>
       )}
 
-      <AddLine
+      <AddBudgetModal
+        open={adding}
         disabled={pending}
+        error={error}
+        onClose={() => {
+          setAdding(false);
+          setError("");
+        }}
         onAdd={(category, label, amount) =>
-          run(() =>
-            planBudgetAction({
-              allocations: [{ category, label: category === "other" ? label || "Other" : undefined, amount }],
-              fromCouple: true,
-            } as never)
+          run(
+            () =>
+              planBudgetAction({
+                allocations: [{ category, label: category === "other" ? label || "Other" : undefined, amount }],
+                fromCouple: true,
+              } as never),
+            () => setAdding(false)
           )
         }
       />
-      {error && (
+      {error && !adding && (
         <p role="alert" className="text-sm text-red-600">
           {error}
         </p>
@@ -224,40 +240,96 @@ function BookForm({ disabled, onSave, onCancel }: { disabled: boolean; onSave: (
   );
 }
 
-function AddLine({ disabled, onAdd }: { disabled: boolean; onAdd: (category: string, label: string, amount: number) => void }) {
+function AddBudgetModal({
+  open,
+  disabled,
+  error,
+  onClose,
+  onAdd,
+}: {
+  open: boolean;
+  disabled: boolean;
+  error: string;
+  onClose: () => void;
+  onAdd: (category: string, label: string, amount: number) => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
   const [category, setCategory] = useState("photographer");
   const [label, setLabel] = useState("");
   const [amount, setAmount] = useState("");
+
+  useEffect(() => {
+    const d = ref.current;
+    if (!d) return;
+    if (open && !d.open) {
+      setAmount("");
+      setLabel("");
+      d.showModal();
+    } else if (!open && d.open) d.close();
+  }, [open]);
+
+  const valid = whole(amount) != null && (category !== "other" || label.trim() !== "");
   return (
-    <section className={`${panelClasses} p-4`}>
-      <h2 className="text-sm font-semibold">Add a line</h2>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <select aria-label="Category" className={`${fieldClasses} w-56`} value={category} onChange={(e) => setCategory(e.target.value)}>
-          {VENDOR_CATEGORIES.map((c) => (
-            <option key={c.slug} value={c.slug}>
-              {c.name}
-            </option>
-          ))}
-          <option value="other">Other…</option>
-        </select>
+    <dialog
+      ref={ref}
+      onClose={onClose}
+      onClick={(e) => e.target === ref.current && onClose()}
+      aria-labelledby="add-budget-title"
+      className="m-auto w-full max-w-md rounded-2xl p-0 shadow-xl backdrop:bg-gray-900/40"
+    >
+      <form
+        className="space-y-4 p-6"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (valid) onAdd(category, label.trim(), whole(amount)!);
+        }}
+      >
+        <h2 id="add-budget-title" className="text-lg font-semibold">
+          Add budget
+        </h2>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-gray-700">Vendor type</span>
+          <select className={fieldClasses} value={category} onChange={(e) => setCategory(e.target.value)}>
+            {VENDOR_CATEGORIES.map((c) => (
+              <option key={c.slug} value={c.slug}>
+                {c.name}
+              </option>
+            ))}
+            <option value="other">Other…</option>
+          </select>
+        </label>
         {category === "other" && (
-          <input aria-label="Name" placeholder="e.g. Rings" className={`${fieldClasses} w-40`} value={label} onChange={(e) => setLabel(e.target.value)} />
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-gray-700">Name</span>
+            <input className={fieldClasses} placeholder="e.g. Rings" maxLength={60} value={label} onChange={(e) => setLabel(e.target.value)} />
+          </label>
         )}
-        <input inputMode="numeric" aria-label="Target amount" placeholder="Target (USD)" className={`${fieldClasses} w-36`} value={amount} onChange={(e) => setAmount(e.target.value)} />
-        <Button
-          type="button"
-          color="cyan"
-          disabled={disabled || whole(amount) == null}
-          onClick={() => {
-            onAdd(category, label.trim(), whole(amount)!);
-            setAmount("");
-            setLabel("");
-          }}
-        >
-          Add
-        </Button>
-      </div>
-    </section>
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-gray-700">Estimated budget (USD)</span>
+          <input
+            inputMode="numeric"
+            className={fieldClasses}
+            placeholder="1500"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
+            autoFocus
+          />
+        </label>
+        {error && (
+          <p role="alert" className="text-sm text-red-600">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" color="cyan" disabled={disabled || !valid}>
+            Add
+          </Button>
+        </div>
+      </form>
+    </dialog>
   );
 }
 
