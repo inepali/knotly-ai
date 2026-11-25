@@ -9,7 +9,7 @@ export default function EscalationCard({
   esc: {
     id: string;
     reason: string;
-    decision: any;
+    decision: { message: string; responseType: string };
     total: number | null;
     status: string;
   };
