@@ -19,10 +19,11 @@ export const Password = z.string().min(8, "Use at least 8 characters");
 export const SignupRole = z.enum(["couple", "vendor"]);
 export type SignupRole = z.infer<typeof SignupRole>;
 
-// Where each role lands after signing up or in. The dashboards (steps 3-4 of the
-// form-first migration) will replace these; until then everyone starts in the chat.
+// Where each role lands after signing up or in. Couples have their dashboard; the vendor
+// dashboard is step 4 of the form-first migration, so vendors still start in the chat.
 export function homeFor(role: string | null | undefined) {
-  return role === "vendor" ? "/vendor" : "/chat";
+  if (role === "vendor") return "/vendor";
+  return role === "couple" ? "/client/dashboard/my-wedding" : "/chat";
 }
 
 // { email } or { phone }, the shape supabase-js expects.
