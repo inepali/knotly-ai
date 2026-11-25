@@ -1,6 +1,7 @@
 // src/components/vendor/EscalationCard.tsx
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function EscalationCard({
   esc,
@@ -15,16 +16,18 @@ export default function EscalationCard({
   };
   coupleMessage: string;
 }) {
+  const router = useRouter();
   const [mode, setMode] = useState<"view" | "edit" | "guide">("view");
   const [text, setText] = useState(esc.decision.message);
   const [done, setDone] = useState("");
 
   async function resolve(body: object, label: string) {
-    const res = await fetch(`/api/escalations/${esc.id}/resolve`, {
+    const res = await fetch(`/api/escalations/${esc.id}`, {
       method: "POST",
       body: JSON.stringify(body),
     });
     setDone(res.ok ? label : "Something went wrong");
+    if (res.ok) router.refresh(); // update the Needs You count
   }
   if (done)
     return (

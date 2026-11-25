@@ -19,10 +19,9 @@ export const Password = z.string().min(8, "Use at least 8 characters");
 export const SignupRole = z.enum(["couple", "vendor"]);
 export type SignupRole = z.infer<typeof SignupRole>;
 
-// Where each role lands after signing up or in. Couples have their dashboard; the vendor
-// dashboard is step 4 of the form-first migration, so vendors still start in the chat.
+// Where each role lands after signing up or in. Admins have no dashboard yet and use the chat.
 export function homeFor(role: string | null | undefined) {
-  if (role === "vendor") return "/vendor";
+  if (role === "vendor") return "/vendor/dashboard/business";
   return role === "couple" ? "/client/dashboard/my-wedding" : "/chat";
 }
 

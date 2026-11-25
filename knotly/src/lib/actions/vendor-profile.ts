@@ -215,8 +215,8 @@ export type UpdateAddOnInput = z.input<typeof UpdateAddOnInput>;
 export const DeleteItemInput = z.object({ id: Id });
 export type DeleteItemInput = z.input<typeof DeleteItemInput>;
 
-const withoutId = ({ id: _id, ...rest }: { id: string } & Record<string, unknown>) =>
-  Object.fromEntries(Object.entries(rest).filter(([, v]) => v !== undefined));
+const withoutId = (fields: { id: string } & Record<string, unknown>) =>
+  Object.fromEntries(Object.entries(fields).filter(([k, v]) => k !== "id" && v !== undefined));
 
 export async function updatePackage(sb: Sb, userId: string, input: unknown) {
   const p = parseInput(UpdatePackageInput, input);
