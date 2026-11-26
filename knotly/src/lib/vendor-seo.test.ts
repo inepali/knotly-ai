@@ -77,6 +77,19 @@ describe("vendorJsonLd", () => {
   it("adds breadcrumbs", () => {
     expect((graph[1] as Record<string, any>).itemListElement).toHaveLength(3); // eslint-disable-line @typescript-eslint/no-explicit-any
   });
+  it("links breadcrumbs up to the city and category listing pages", () => {
+    const withListings = vendorJsonLd({
+      ...vendor,
+      cityUrl: "https://knotly.test/wedding-vendors/charlotte-nc",
+      listingUrl: "https://knotly.test/wedding-vendors/charlotte-nc/photographer",
+    })["@graph"][1] as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    expect(withListings.itemListElement.map((c: { item: string }) => c.item)).toEqual([
+      "https://knotly.test",
+      "https://knotly.test/wedding-vendors/charlotte-nc",
+      "https://knotly.test/wedding-vendors/charlotte-nc/photographer",
+      vendor.url,
+    ]);
+  });
   it("escapes < so text can't close the script tag", () => {
     expect(jsonLdString({ a: "</script><b>" })).not.toContain("</script>");
   });
