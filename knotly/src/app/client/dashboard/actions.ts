@@ -6,6 +6,9 @@ import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { removeAvatar, saveAvatar } from "@/lib/actions/avatar";
 import { coupleOrError } from "@/lib/couple-session";
+import { startAddonCheckout } from "@/lib/actions/addons";
+import { createCheckoutSession } from "@/lib/stripe";
+import { siteUrl } from "@/lib/site";
 import { saveWeddingForm, type SaveWeddingFormInput } from "@/lib/actions/wedding";
 import { postProject, requestMoreEstimates } from "@/lib/actions/posting";
 import {
@@ -102,4 +105,12 @@ export async function recordBookingAction(input: RecordBookingInput): Promise<Re
   if (!r.ok) return r;
   refresh();
   return { ok: true };
+}
+
+// Add-ons: Stripe Checkout. Returns the hosted checkout URL; the browser goes there.
+export async function startAddonCheckoutAction(keys: string[]): Promise<Result & { url?: string }> {
+  const me = await coupleOrError();
+  if (me.error !== undefined) return { ok: false, error: me.error };
+  const r = await startAddonCheckout(me.sb, me.userId, { keys }, { createSession: createCheckoutSession, siteUrl: siteUrl() });
+  return r.ok ? { ok: true, url: r.data.url } : r;
 }

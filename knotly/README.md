@@ -34,3 +34,15 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Couple add-ons (Stripe)
+
+Couples pay once per wedding for add-ons (see `client-add-ons-spec.md`). Set in `.env.local` and on Vercel:
+
+- `STRIPE_SECRET_KEY`: server only. Use a test key (`sk_test_…`) in dev.
+- `STRIPE_WEBHOOK_SECRET`: from a Stripe webhook pointed at `/api/stripe/webhook` with the events
+  `checkout.session.completed`, `checkout.session.async_payment_succeeded` and `charge.refunded`.
+  Locally: `stripe listen --forward-to localhost:3000/api/stripe/webhook`.
+- Turn on Stripe Tax and add your NC/SC registrations in the Stripe dashboard. Checkout uses `automatic_tax`.
+
+Prices live in the `addon_catalog` table, so you can change them without a deploy.
