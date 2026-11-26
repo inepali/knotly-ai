@@ -54,6 +54,7 @@ import {
 } from "@/lib/actions/registry";
 import { addTables, deleteTable, saveTable, setSeats, type AddTablesInput, type SaveTableInput, type SetSeatsInput, type TableIdInput } from "@/lib/actions/seating";
 import { deletePhotos, moderatePhotos, setPhotoSettings, type DeletePhotosInput, type ModerateInput, type PhotoSettingsInput } from "@/lib/actions/photo-share";
+import { deleteGift, importFromRegistry, markThanked, saveGift, type GiftIdInput, type SaveGiftInput, type ThankedInput } from "@/lib/actions/thank-you";
 import { createCheckoutSession } from "@/lib/stripe";
 import { siteUrl } from "@/lib/site";
 import { saveWeddingForm, type SaveWeddingFormInput } from "@/lib/actions/wedding";
@@ -235,3 +236,16 @@ export const setSeatsAction = async (i: SetSeatsInput) => asCouple(setSeats, i);
 export const setPhotoSettingsAction = async (i: PhotoSettingsInput) => asCouple(setPhotoSettings, i);
 export const moderatePhotosAction = async (i: ModerateInput) => asCouple(moderatePhotos, i);
 export const deletePhotosAction = async (i: DeletePhotosInput) => asCouple(deletePhotos, i);
+
+// Thank-You Tracker (add-on).
+export const saveGiftAction = async (i: SaveGiftInput) => asCouple(saveGift, i);
+export const markThankedAction = async (i: ThankedInput) => asCouple((sb, u, x) => markThanked(sb, u, x), i);
+export const deleteGiftAction = async (i: GiftIdInput) => asCouple(deleteGift, i);
+export async function importGiftsAction(): Promise<Result & { added?: number; matched?: number }> {
+  const me = await coupleOrError();
+  if (me.error !== undefined) return { ok: false, error: me.error };
+  const r = await importFromRegistry(me.sb, me.userId);
+  if (!r.ok) return r;
+  refresh();
+  return { ok: true, ...r.data };
+}
