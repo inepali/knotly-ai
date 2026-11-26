@@ -1,8 +1,7 @@
-// src/components/dashboard/CoupleAccount.tsx — bottom of the couple's sidebar: profile photo
+// src/components/dashboard/AccountBlock.tsx — bottom of a dashboard sidebar: profile photo
 // (click to change), name, and Sign out.
 "use client";
 import { useRef, useState, useTransition } from "react";
-import { removeAvatarAction, signOutAction, uploadAvatarAction } from "@/app/client/dashboard/actions";
 
 const SIZE = 512; // photos are cropped square and shrunk here, so uploads stay small
 
@@ -29,12 +28,22 @@ async function shrink(file: File): Promise<Blob> {
   );
 }
 
-export default function CoupleAccount({
+type Result = { ok: true } | { ok: false; error: string };
+
+// The three server actions come from the caller (the couple's or the vendor's own), so each side
+// checks its own role.
+export default function AccountBlock({
   name,
   avatarUrl,
+  uploadAvatarAction,
+  removeAvatarAction,
+  signOutAction,
 }: {
   name: string;
   avatarUrl: string | null;
+  uploadAvatarAction: (form: FormData) => Promise<Result>;
+  removeAvatarAction: () => Promise<Result>;
+  signOutAction: () => Promise<void>;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [pending, start] = useTransition();

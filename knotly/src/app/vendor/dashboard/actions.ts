@@ -2,6 +2,9 @@
 // Server actions behind the vendor dashboard's forms. Each one re-checks who is signed in
 // (and that they're a vendor), then calls the shared server function in src/lib/actions.
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { supabaseServer } from "@/lib/supabase/server";
+import { removeAvatar, saveAvatar } from "@/lib/actions/avatar";
 import { vendorOrError } from "@/lib/vendor-session";
 import {
   addTestimonials,
@@ -69,6 +72,24 @@ export const setAutonomyAction = async (i: SetAutonomyInput) => run((sb, u) => s
 export const saveRuleAction = async (i: SaveRuleInput) => run((sb, u) => saveRule(sb, u, i));
 export const removeRuleAction = async (i: RemoveRuleInput) => run((sb, u) => removeRule(sb, u, i));
 
-export const resetCalendarLinkAction = async () => run((sb, u) => resetFeedToken(sb, u));
+export async function signOutAction() {
+  const sb = await supabaseServer();
+  await sb.auth.signOut();
+  redirect("/signin");
+}
+
+// The photo shows in the sidebar on every page the vendor can open (dashboard and Messages).
+export async function uploadAvatarAction(form: FormData): Promise<Result> {
+  const r = await run((sb, u) => saveAvatar(sb, u, form.get("avatar")));
+  if (r.ok) revalidatePath("/", "layout");
+  return r;
+}
+export async function removeAvatarAction(): Promise<Result> {
+  const r = await run((sb, u) => removeAvatar(sb, u));
+  if (r.ok) revalidatePath("/", "layout");
+  return r;
+}
+
+export const resetCalendarLinkAction =async () => run((sb, u) => resetFeedToken(sb, u));
 export const setAvailabilityAction =async (i: SetAvailabilityInput) => run((sb, u) => setAvailability(sb, u, i));
 export const saveConsultHoursAction = async (i: SaveConsultHoursInput) => run((sb, u) => saveConsultHours(sb, u, i));

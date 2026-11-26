@@ -13,8 +13,6 @@ import { VendorOffer, type AddOn, type Package } from "@/components/vendor/Offer
 import { SiteHeader } from "@/components/ui/SiteHeader";
 import { SiteFooter } from "@/components/ui/SiteFooter";
 
-export const revalidate = 600; // pages are cached for ten minutes, then refreshed
-
 type Params = Promise<{ city: string; category: string; slug: string }>;
 
 type Row = {

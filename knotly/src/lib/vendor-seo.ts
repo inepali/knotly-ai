@@ -34,7 +34,7 @@ export type SeoVendor = {
   homeUrl: string;
   city: { name: string; state: string } | null;
   radiusMiles: number | null;
-  packages: { name: string; description: string | null; price: number }[];
+  packages: { name: string; description?: string | null; price: number }[];
   reviews: { author: string; rating: number | null; body: string; verified: boolean }[];
 };
 

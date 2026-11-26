@@ -1,7 +1,8 @@
 // src/components/dashboard/CoupleShell.tsx — the couple's dashboard frame (sidebar + account block).
 // Used by the dashboard pages and by /inbox, so Messages opens inside the same layout.
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
-import CoupleAccount from "@/components/dashboard/CoupleAccount";
+import AccountBlock from "@/components/dashboard/AccountBlock";
+import { removeAvatarAction, signOutAction, uploadAvatarAction } from "@/app/client/dashboard/actions";
 import { avatarUrl } from "@/lib/actions/avatar";
 import { requireCouple } from "@/lib/couple-session";
 
@@ -21,7 +22,15 @@ export default async function CoupleShell({ children }: { children: React.ReactN
     <DashboardShell
       links={links}
       help="couple"
-      footer={<CoupleAccount name={profile?.full_name || profile?.email || "Your account"} avatarUrl={photo} />}
+      footer={
+        <AccountBlock
+          name={profile?.full_name || profile?.email || "Your account"}
+          avatarUrl={photo}
+          uploadAvatarAction={uploadAvatarAction}
+          removeAvatarAction={removeAvatarAction}
+          signOutAction={signOutAction}
+        />
+      }
     >
       {children}
     </DashboardShell>

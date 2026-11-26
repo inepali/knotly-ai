@@ -34,7 +34,7 @@ export async function uploadAvatarAction(formData: FormData): Promise<Result> {
   if (me.error !== undefined) return { ok: false, error: me.error };
   const r = await saveAvatar(me.sb, me.userId, formData.get("avatar"));
   if (!r.ok) return r;
-  refresh();
+  revalidatePath("/", "layout"); // the photo also shows in the sidebar on Messages
   return { ok: true };
 }
 
@@ -43,7 +43,7 @@ export async function removeAvatarAction(): Promise<Result> {
   if (me.error !== undefined) return { ok: false, error: me.error };
   const r = await removeAvatar(me.sb, me.userId);
   if (!r.ok) return r;
-  refresh();
+  revalidatePath("/", "layout");
   return { ok: true };
 }
 
