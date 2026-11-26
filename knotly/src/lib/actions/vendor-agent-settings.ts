@@ -28,6 +28,9 @@ export async function saveRule(sb: Sb, userId: string, input: unknown) {
     .insert({ vendor_id: userId, kind, params, source_text: sourceText })
     .select("id, kind, params")
     .single();
+  if (error?.message.includes("vendor_agent_rules_vendor_id_fkey")) {
+    return fail("Save your Business profile first (Business page), then add rules.");
+  }
   return error ? fail(error.message) : ok({ saved: data });
 }
 
