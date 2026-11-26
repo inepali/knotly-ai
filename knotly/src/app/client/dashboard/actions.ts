@@ -52,6 +52,7 @@ import {
   type SaveItemInput,
   type SaveLinkInput,
 } from "@/lib/actions/registry";
+import { addTables, deleteTable, saveTable, setSeats, type AddTablesInput, type SaveTableInput, type SetSeatsInput, type TableIdInput } from "@/lib/actions/seating";
 import { createCheckoutSession } from "@/lib/stripe";
 import { siteUrl } from "@/lib/site";
 import { saveWeddingForm, type SaveWeddingFormInput } from "@/lib/actions/wedding";
@@ -222,3 +223,9 @@ export async function sendInvitationsAction(i: SendInvitationsInput): Promise<Re
   refresh();
   return { ok: true, sent: r.data.sent, failed: r.data.failed };
 }
+
+// Seating Chart (add-on).
+export const saveTableAction = async (i: SaveTableInput) => asCouple(saveTable, i);
+export const addTablesAction = async (i: AddTablesInput) => asCouple(addTables, i);
+export const deleteTableAction = async (i: TableIdInput) => asCouple(deleteTable, i);
+export const setSeatsAction = async (i: SetSeatsInput) => asCouple(setSeats, i);
