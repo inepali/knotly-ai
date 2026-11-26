@@ -9,6 +9,9 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { categoryLabel } from "@/lib/categories";
 import { SITE_NAME, siteUrl } from "@/lib/site";
 import { jsonLdString, metaDescription, vendorJsonLd, vendorPath } from "@/lib/vendor-seo";
+import { cityPath, listingNoun, listingPath, lowerNoun } from "@/lib/listing";
+import { isPublicVendor } from "@/lib/public-listing";
+import { Breadcrumbs } from "@/components/listing/ListingParts";
 import { VendorOffer, type AddOn, type Package } from "@/components/vendor/Offer";
 import { SiteHeader } from "@/components/ui/SiteHeader";
 import { SiteFooter } from "@/components/ui/SiteFooter";
@@ -24,24 +27,28 @@ type Row = {
   website: string | null;
   slug: string | null;
   service_radius_miles: number | null;
+  published: boolean;
+  listed_until: string | null;
   metros: { name: string; state: string } | { name: string; state: string }[] | null;
   vendor_packages: Package[];
   vendor_addons: AddOn[];
   testimonials: { id: string; author_name: string; rating: number | null; body: string; verified: boolean }[];
 };
 
-// One lookup per request, shared by the metadata and the page. Published vendors only.
+// One lookup per request, shared by the metadata and the page. Public vendors only (published,
+// and on a monthly/yearly plan once PUBLIC_PAGES_REQUIRE_PLAN is on; see lib/public-listing).
 const getVendor = cache(async (slug: string) => {
   const { data } = await supabaseAdmin
     .from("vendors")
     .select(
-      "id, business_name, category, bio, metro_slug, website, slug, service_radius_miles, metros(name, state), vendor_packages(id, name, description, price, inclusions), vendor_addons(id, name, description, price), testimonials(id, author_name, rating, body, verified)"
+      "id, business_name, category, bio, metro_slug, website, slug, service_radius_miles, published, listed_until, metros(name, state), vendor_packages(id, name, description, price, inclusions), vendor_addons(id, name, description, price), testimonials(id, author_name, rating, body, verified)"
     )
     .eq("slug", slug)
     .eq("published", true)
     .maybeSingle();
   if (!data) return null;
   const row = data as unknown as Row;
+  if (!isPublicVendor(row)) return null;
   const metro = Array.isArray(row.metros) ? row.metros[0] : row.metros;
   return { ...row, city: metro ?? null };
 });
@@ -95,6 +102,8 @@ export default async function PublicVendorPage({ params }: { params: Params }) {
     website: v.website,
     url,
     homeUrl: siteUrl(),
+    cityUrl: v.metro_slug ? `${siteUrl()}${cityPath(v.metro_slug)}` : undefined,
+    listingUrl: v.metro_slug ? `${siteUrl()}${listingPath(v.metro_slug, v.category)}` : undefined,
     city: v.city,
     radiusMiles: v.service_radius_miles,
     packages: v.vendor_packages,
@@ -105,19 +114,18 @@ export default async function PublicVendorPage({ params }: { params: Params }) {
     <div className="flex min-h-dvh flex-col">
       <SiteHeader />
       <main className="mx-auto w-full max-w-3xl flex-1 space-y-10 px-4 pb-16 sm:px-6">
-        <nav aria-label="Breadcrumb" className="text-sm text-gray-500">
-          <ol className="flex flex-wrap items-center gap-1.5">
-            <li>
-              <Link href="/" className="hover:text-gray-900 hover:underline">
-                Home
-              </Link>
-            </li>
-            <li aria-hidden="true">/</li>
-            <li>
-              {c.kind} in {c.place}
-            </li>
-          </ol>
-        </nav>
+        <Breadcrumbs
+          items={[
+            { name: "Home", href: "/" },
+            ...(v.metro_slug && v.city
+              ? [
+                  { name: c.place, href: cityPath(v.metro_slug) },
+                  { name: listingNoun(v.category), href: listingPath(v.metro_slug, v.category) },
+                ]
+              : []),
+            { name: v.business_name },
+          ]}
+        />
 
         <header>
           <p className="text-xs font-semibold tracking-wide text-cyan-700 uppercase">
@@ -160,6 +168,13 @@ export default async function PublicVendorPage({ params }: { params: Params }) {
             {v.business_name} serves {c.place}
             {v.service_radius_miles ? ` and couples within about ${v.service_radius_miles} miles` : " and the surrounding area"}.
           </p>
+          {v.metro_slug && (
+            <p className="mt-2 text-sm">
+              <Link href={listingPath(v.metro_slug, v.category)} className="text-cyan-700 hover:underline">
+                See more {lowerNoun(listingNoun(v.category))} in {c.place}
+              </Link>
+            </p>
+          )}
         </section>
 
         {v.testimonials.length > 0 && (

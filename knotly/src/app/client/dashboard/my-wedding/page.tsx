@@ -2,12 +2,19 @@
 import { requireCouple } from "@/lib/couple-session";
 import { getProject } from "@/lib/actions/wedding";
 import WeddingForm, { type WeddingFormInitial } from "@/components/dashboard/WeddingForm";
+import { CATEGORY_SLUGS } from "@/lib/categories";
 
 // Posting starts the vendor agents in the background (after the response); allow them time.
 export const maxDuration = 300;
 
-export default async function MyWeddingPage() {
+type Param = string | string[] | undefined;
+const one = (p: Param) => (Array.isArray(p) ? p[0] : p);
+
+// ?metro=charlotte-nc&need=photographer comes from a public listing page via sign-up. It only fills
+// blanks on screen; nothing is saved until the couple saves or posts.
+export default async function MyWeddingPage({ searchParams }: { searchParams: Promise<{ metro?: Param; need?: Param }> }) {
   const { sb, userId } = await requireCouple();
+  const prefill = await searchParams;
   const [project, { data: metros }] = await Promise.all([
     getProject(sb, userId),
     sb.from("metros").select("slug, name, state").order("name"),
@@ -33,6 +40,13 @@ export default async function MyWeddingPage() {
     })),
     postedAt: project?.posted_at ?? null,
   };
+
+  const metroParam = one(prefill.metro);
+  if (!initial.metro && metroParam && (metros ?? []).some((m: { slug: string }) => m.slug === metroParam)) initial.metro = metroParam;
+  const needParam = one(prefill.need);
+  if (needParam && (CATEGORY_SLUGS as readonly string[]).includes(needParam) && !initial.needs.some((n) => n.category === needParam)) {
+    initial.needs.push({ category: needParam, budget: null, hours: null });
+  }
 
   return (
     <div>
