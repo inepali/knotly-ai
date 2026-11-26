@@ -31,6 +31,7 @@ export const ADDON_ROUTES: Partial<Record<AddonKey, string>> = {
   invitations: "/client/dashboard/invitations",
   seating: "/client/dashboard/seating",
   photo_share: "/client/dashboard/photos",
+  thank_you: "/client/dashboard/thank-you",
 };
 
 export type Cart = {
