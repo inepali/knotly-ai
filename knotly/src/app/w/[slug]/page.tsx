@@ -7,6 +7,8 @@ import { loadPublicSite } from "@/lib/public-site";
 import { isUnlocked, unlockCookieName } from "@/lib/site-password";
 import { formatWeddingDate, sitePhotoUrl } from "@/lib/wedding-site";
 import { siteUrl } from "@/lib/site";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { loadPublicRegistry } from "@/lib/registry-data";
 import WeddingSite from "@/components/website/WeddingSite";
 import SitePasswordGate from "@/components/website/SitePasswordGate";
 
@@ -35,5 +37,6 @@ export default async function WeddingSitePage({ params }: Props) {
   if (!isUnlocked(site.slug, site.passwordHash, cookie)) {
     return <SitePasswordGate slug={site.slug} title={site.title} theme={site.theme} />;
   }
-  return <WeddingSite site={site} />;
+  const registry = site.owned.includes("registry") && !site.archived ? await loadPublicRegistry(supabaseAdmin, site.projectId) : null;
+  return <WeddingSite site={site} registry={registry} />;
 }

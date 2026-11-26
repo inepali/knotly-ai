@@ -1,6 +1,8 @@
 // src/components/website/WeddingSite.tsx — the public wedding website (server-rendered).
 // Also used for the editor's preview link; everything shown comes from PublicSite only.
 import type { PublicSite } from "@/lib/public-site";
+import type { PublicRegistry } from "@/lib/registry-data";
+import RegistrySection from "@/components/registry/RegistrySection";
 import {
   SECTION_LABELS,
   formatWeddingDate,
@@ -14,7 +16,7 @@ import { themeStyle } from "./theme";
 
 // Knotly's launch metros are all on Eastern time; store a per-wedding zone when that changes.
 const TZ = "America/New_York";
-const PENDING = new Set<Section["type"]>(["registry", "photos"]);
+const PENDING = new Set<Section["type"]>(["photos"]);
 const time = (iso: string) =>
   new Date(iso).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: TZ });
 
@@ -30,7 +32,7 @@ function Block({ id, children }: { id: string; children: React.ReactNode }) {
   );
 }
 
-export default function WeddingSite({ site }: { site: PublicSite }) {
+export default function WeddingSite({ site, registry = null }: { site: PublicSite; registry?: PublicRegistry | null }) {
   const date = formatWeddingDate(site.weddingDate);
   const cover = site.photos[0];
 
@@ -65,7 +67,7 @@ export default function WeddingSite({ site }: { site: PublicSite }) {
         </nav>
       )}
       {shown.map((s) => (
-        <SectionView key={s.type} s={s} site={site} date={date} cover={cover} />
+        <SectionView key={s.type} s={s} site={site} date={date} cover={cover} registry={registry} />
       ))}
       <footer className="px-6 py-10 text-center text-xs opacity-60">
         Made with <a href="/" className="underline">Knotly</a>
@@ -74,7 +76,19 @@ export default function WeddingSite({ site }: { site: PublicSite }) {
   );
 }
 
-function SectionView({ s, site, date, cover }: { s: Section; site: PublicSite; date: string; cover?: PublicSite["photos"][number] }) {
+function SectionView({
+  s,
+  site,
+  date,
+  cover,
+  registry,
+}: {
+  s: Section;
+  site: PublicSite;
+  date: string;
+  cover?: PublicSite["photos"][number];
+  registry: PublicRegistry | null;
+}) {
   switch (s.type) {
     case "hero":
       return (
@@ -205,8 +219,14 @@ function SectionView({ s, site, date, cover }: { s: Section; site: PublicSite; d
         </Block>
       );
     case "registry":
+      return registry && (registry.links.length || registry.funds.length || registry.items.length) ? (
+        <Block id="registry">
+          <Heading>{SECTION_LABELS.registry}</Heading>
+          <RegistrySection slug={site.slug} registry={registry} />
+        </Block>
+      ) : null;
     case "photos":
-      // Filled in by the Registry and Photo Sharing add-ons.
+      // Filled in by the Photo Sharing add-on.
       return null;
   }
 }
