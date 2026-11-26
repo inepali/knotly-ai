@@ -31,6 +31,29 @@ describe("setAvailability", () => {
     expect((await setAvailability(sb, "v1", { dates: ["2020-01-01"], status: "free" })).ok).toBe(true);
   });
 
+  it("saves the event name and details, trimmed, and leaves them empty when blank", async () => {
+    const { sb, called } = mockSb();
+    await setAvailability(sb, "v1", {
+      dates: ["2027-05-01", "2027-05-02"],
+      status: "booked",
+      title: "  Priya & Sam ",
+      details: " Crystal Ballroom, 4pm ",
+    });
+    expect(called("vendor_availability", "upsert")[0].args[0]).toMatchObject([
+      { date: "2027-05-01", title: "Priya & Sam", details: "Crystal Ballroom, 4pm" },
+      { date: "2027-05-02", title: "Priya & Sam", details: "Crystal Ballroom, 4pm" },
+    ]);
+    const plain = mockSb();
+    await setAvailability(plain.sb, "v1", { dates: ["2027-05-03"], status: "blocked", title: " ", details: "" });
+    expect(plain.called("vendor_availability", "upsert")[0].args[0]).toMatchObject([{ title: null, details: null }]);
+  });
+
+  it("rejects a title over 80 characters and details over 2000", async () => {
+    const { sb } = mockSb();
+    expect((await setAvailability(sb, "v1", { dates: ["2027-05-01"], status: "booked", title: "x".repeat(81) })).ok).toBe(false);
+    expect((await setAvailability(sb, "v1", { dates: ["2027-05-01"], status: "booked", details: "x".repeat(2001) })).ok).toBe(false);
+  });
+
   it("rejects malformed dates", async () => {
     const { sb } = mockSb();
     expect((await setAvailability(sb, "v1", { dates: ["next friday"], status: "blocked" })).ok).toBe(false);

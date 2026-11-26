@@ -29,7 +29,7 @@ async function loadDates(sb: Awaited<ReturnType<typeof requireVendor>>["sb"], us
 export default async function AvailabilityPage() {
   const { sb, userId } = await requireVendor();
   const today = new Date().toISOString().slice(0, 10);
-  const [{ data: dates }, { data: hours }, { data: settings }, token, origin] = await Promise.all([
+  const [rows, { data: hours }, { data: settings }, token, origin] = await Promise.all([
     loadDates(sb, userId, today),
     sb.from("consult_hours").select("weekday, start_time, end_time, timezone, slot_minutes").eq("vendor_id", userId).order("weekday"),
     sb.from("vendor_agent_settings").select("call_link, call_min_notice_hours, calls_per_day").eq("vendor_id", userId).maybeSingle(),
@@ -37,7 +37,6 @@ export default async function AvailabilityPage() {
     appOrigin(),
   ]);
 
-  const rows = dates;
 
   // Names for dates booked through a conversation.
   const bookedThreads = [...new Set(rows.filter((r) => r.thread_id !== NO_THREAD && r.status === "booked").map((r) => r.thread_id as string))];
@@ -57,7 +56,7 @@ export default async function AvailabilityPage() {
     <div>
       <h1 className="text-2xl font-semibold tracking-tight">Availability</h1>
       <p className="mt-1 text-sm text-gray-600">
-        Click a day to block it or mark it booked. Your agent won&apos;t offer dates you&apos;ve blocked or booked, and dates
+        Click a day to add an event or see its details. Your agent won&apos;t offer dates you&apos;ve blocked or booked, and dates
         it is holding for a couple show up too. Past days can&apos;t be changed.
       </p>
       <AvailabilityEditor
