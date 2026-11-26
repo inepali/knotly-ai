@@ -7,6 +7,18 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { removeAvatar, saveAvatar } from "@/lib/actions/avatar";
 import { coupleOrError } from "@/lib/couple-session";
 import { startAddonCheckout } from "@/lib/actions/addons";
+import {
+  deleteEvent,
+  deleteHousehold,
+  importHouseholds,
+  saveEvent,
+  saveHousehold,
+  setGuestCountFromList,
+  type DeleteHouseholdInput,
+  type HouseholdInput,
+  type ImportHouseholdsInput,
+  type SaveEventInput,
+} from "@/lib/actions/guests";
 import { createCheckoutSession } from "@/lib/stripe";
 import { siteUrl } from "@/lib/site";
 import { saveWeddingForm, type SaveWeddingFormInput } from "@/lib/actions/wedding";
@@ -114,3 +126,20 @@ export async function startAddonCheckoutAction(keys: string[]): Promise<Result &
   const r = await startAddonCheckout(me.sb, me.userId, { keys }, { createSession: createCheckoutSession, siteUrl: siteUrl() });
   return r.ok ? { ok: true, url: r.data.url } : r;
 }
+
+// Guest List (free). Each action re-checks the signed-in couple; RLS keeps rows to their own wedding.
+type Shared<I> = (sb: NonNullable<Awaited<ReturnType<typeof coupleOrError>>["sb"]>, userId: string, input: I) => Promise<{ ok: boolean; error?: string }>;
+async function asCouple<I>(fn: Shared<I>, input: I): Promise<Result> {
+  const me = await coupleOrError();
+  if (me.error !== undefined) return { ok: false, error: me.error };
+  const r = await fn(me.sb, me.userId, input);
+  if (!r.ok) return { ok: false, error: r.error ?? "Something went wrong." };
+  refresh();
+  return { ok: true };
+}
+export const saveHouseholdAction = async (i: HouseholdInput) => asCouple(saveHousehold, i);
+export const deleteHouseholdAction = async (i: DeleteHouseholdInput) => asCouple(deleteHousehold, i);
+export const importHouseholdsAction = async (i: ImportHouseholdsInput) => asCouple(importHouseholds, i);
+export const applyGuestCountAction = async () => asCouple((sb, u) => setGuestCountFromList(sb, u), undefined);
+export const saveEventAction = async (i: SaveEventInput) => asCouple(saveEvent, i);
+export const deleteEventAction = async (i: DeleteHouseholdInput) => asCouple(deleteEvent, i);

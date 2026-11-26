@@ -11,6 +11,7 @@ const links = [
   { href: "/client/dashboard/vendors", label: "Estimates" },
   { href: "/inbox", label: "Messages" },
   { href: "/client/dashboard/budget", label: "My Budgets" },
+  { href: "/client/dashboard/guests", label: "Guest List" },
   { href: "/client/dashboard/add-ons", label: "Add-ons" },
 ];
 
