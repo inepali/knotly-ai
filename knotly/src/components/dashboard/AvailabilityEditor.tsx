@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { fieldClasses, panelClasses } from "@/components/ui/fields";
 import { saveConsultHoursAction } from "@/app/vendor/dashboard/actions";
-import AvailabilityCalendar, { type Hold, type Manual } from "./AvailabilityCalendar";
+import AvailabilityCalendar, { type CoupleBooking, type Hold, type Manual } from "./AvailabilityCalendar";
 import CalendarSync from "./CalendarSync";
 import { useAction, wholeNumber } from "./useAction";
 
@@ -16,7 +16,7 @@ export default function AvailabilityEditor(props: {
   serverToday: string;
   manual: Manual[];
   holds: Hold[];
-  coupleBooked: string[];
+  coupleBooked: CoupleBooking[];
   feedUrl: string | null;
   hours: Window[];
   callLink: string;
