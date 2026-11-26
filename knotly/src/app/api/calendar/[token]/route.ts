@@ -20,7 +20,7 @@ export async function GET(_req: NextRequest, ctx: RouteContext<"/api/calendar/[t
   const since = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const { data: rows } = await db
     .from("vendor_availability")
-    .select("date, thread_id")
+    .select("date, thread_id, title, details")
     .eq("vendor_id", feed.vendor_id)
     .eq("status", "booked")
     .gte("date", since)
@@ -43,8 +43,9 @@ export async function GET(_req: NextRequest, ctx: RouteContext<"/api/calendar/[t
     return {
       uid: `${feed.vendor_id}-${r.date}-${r.thread_id ?? "manual"}@knotly`,
       date: r.date,
-      summary: couple?.partner_names ? `Booked: ${couple.partner_names}` : "Booked (Knotly)",
-      description: [couple?.venue && `Venue: ${couple.venue}`, "Booked in Knotly."].filter(Boolean).join("\n"),
+      // Hand-entered events use the vendor's own title and notes; conversation bookings use the couple.
+      summary: r.title ? r.title : couple?.partner_names ? `Booked: ${couple.partner_names}` : "Booked (Knotly)",
+      description: [r.details, couple?.venue && `Venue: ${couple.venue}`, "Booked in Knotly."].filter(Boolean).join("\n"),
     };
   });
 

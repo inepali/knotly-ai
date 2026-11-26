@@ -10,6 +10,8 @@ export const SetAvailabilityInput = z.object({
     .min(1)
     .max(60),
   status: z.enum(["blocked", "booked", "free"]),
+  title: z.string().max(80).optional().describe("Event name, e.g. the couple's names"),
+  details: z.string().max(2000).optional().describe("Notes about the event"),
 });
 export type SetAvailabilityInput = z.input<typeof SetAvailabilityInput>;
 
@@ -41,6 +43,8 @@ export async function setAvailability(sb: Sb, userId: string, input: unknown) {
   const p = parseInput(SetAvailabilityInput, input);
   if (!p.ok) return p;
   const { dates, status } = p.data;
+  const title = p.data.title?.trim() || null;
+  const details = p.data.details?.trim() || null;
 
   // Nothing can be blocked or booked in the past. The cutoff is a day back so a vendor whose
   // "today" is behind UTC isn't turned away; the calendar itself disables every past day.
@@ -62,7 +66,7 @@ export async function setAvailability(sb: Sb, userId: string, input: unknown) {
 
   const { error } = await sb
     .from("vendor_availability")
-    .upsert(dates.map((date) => ({ vendor_id: userId, date, status, thread_id: NO_THREAD })));
+    .upsert(dates.map((date) => ({ vendor_id: userId, date, status, thread_id: NO_THREAD, title, details })));
   if (error) return fail(error.message);
   // Changing blocked <-> booked replaces the old marker instead of leaving both on the day.
   const { error: swapError } = await sb
