@@ -1,0 +1,29 @@
+// src/components/dashboard/CoupleShell.tsx — the couple's dashboard frame (sidebar + account block).
+// Used by the dashboard pages and by /inbox, so Messages opens inside the same layout.
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
+import CoupleAccount from "@/components/dashboard/CoupleAccount";
+import { avatarUrl } from "@/lib/actions/avatar";
+import { requireCouple } from "@/lib/couple-session";
+
+const links = [
+  { href: "/client/dashboard/my-wedding", label: "My Wedding" },
+  { href: "/client/dashboard/vendors", label: "Estimates" },
+  { href: "/inbox", label: "Messages" },
+  { href: "/client/dashboard/budget", label: "My Budgets" },
+];
+
+export default async function CoupleShell({ children }: { children: React.ReactNode }) {
+  const { sb, userId } = await requireCouple();
+  // Older databases may not have the avatar column yet; fall back to no photo rather than failing.
+  const { data: profile } = await sb.from("profiles").select("full_name, email, avatar_path").eq("id", userId).maybeSingle();
+  const photo = await avatarUrl(sb, profile?.avatar_path);
+  return (
+    <DashboardShell
+      links={links}
+      help="couple"
+      footer={<CoupleAccount name={profile?.full_name || profile?.email || "Your account"} avatarUrl={photo} />}
+    >
+      {children}
+    </DashboardShell>
+  );
+}
