@@ -4,7 +4,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { fieldClasses, labelClasses, panelClasses } from "@/components/ui/fields";
-import { VENDOR_CATEGORIES } from "@/lib/categories";
+import { HOURLY_CATEGORIES, VENDOR_CATEGORIES } from "@/lib/categories";
 import { saveAndPostAction, saveWeddingAction } from "@/app/client/dashboard/actions";
 
 export type WeddingFormInitial = {
@@ -15,7 +15,9 @@ export type WeddingFormInitial = {
   guestCount: number | null;
   budgetTotal: number | null;
   style: string;
-  needs: { category: string; budget: number | null }[];
+  loveStory: string;
+  projectDetails: string;
+  needs: { category: string; budget: number | null; hours: number | null }[];
   postedAt: string | null;
 };
 
@@ -32,15 +34,21 @@ export default function WeddingForm({ initial, metros }: { initial: WeddingFormI
     guestCount: initial.guestCount?.toString() ?? "",
     budgetTotal: initial.budgetTotal?.toString() ?? "",
     style: initial.style,
+    loveStory: initial.loveStory,
+    projectDetails: initial.projectDetails,
   });
   // category -> budget text ("" = no budget); present key = needed
   const [needs, setNeeds] = useState<Record<string, string>>(
     Object.fromEntries(initial.needs.map((n) => [n.category, n.budget?.toString() ?? ""]))
   );
+  // category -> hours of service text ("" = not specified); only used for hourly categories
+  const [hours, setHours] = useState<Record<string, string>>(
+    Object.fromEntries(initial.needs.map((n) => [n.category, n.hours?.toString() ?? ""]))
+  );
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
 
-  const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+  const set = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setV((s) => ({ ...s, [k]: e.target.value }));
   const toggle = (category: string) =>
     setNeeds((s) => {
@@ -59,8 +67,15 @@ export default function WeddingForm({ initial, metros }: { initial: WeddingFormI
     guestCount: whole(v.guestCount),
     budgetTotal: whole(v.budgetTotal),
     style: v.style.trim() || undefined,
+    // sent even when empty, so clearing the box clears the saved text
+    loveStory: v.loveStory.trim(),
+    projectDetails: v.projectDetails.trim(),
     needs: Object.keys(needs),
-    needBudgets: Object.entries(needs).map(([category, b]) => ({ category, budget: whole(b) ?? null })),
+    needBudgets: Object.entries(needs).map(([category, b]) => ({
+      category,
+      budget: whole(b) ?? null,
+      hours: HOURLY_CATEGORIES.has(category) ? Math.min(whole(hours[category] ?? "") ?? 0, 24) || null : null,
+    })),
   });
 
   const canPost = !!v.weddingDate && !!v.metro && Object.keys(needs).length > 0;
@@ -128,12 +143,38 @@ export default function WeddingForm({ initial, metros }: { initial: WeddingFormI
             <input className={fieldClasses} value={v.style} onChange={set("style")} placeholder="boho, outdoor, golden hour" />
           </Field>
         </div>
+        <div className="sm:col-span-2">
+          <Field label="Your love story">
+            <textarea
+              className={fieldClasses}
+              rows={4}
+              maxLength={2000}
+              value={v.loveStory}
+              onChange={set("loveStory")}
+              placeholder="How you met, what your day means to you. Vendors read this to understand what matters to you."
+            />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="Project details and expectations">
+            <textarea
+              className={fieldClasses}
+              rows={4}
+              maxLength={2000}
+              value={v.projectDetails}
+              onChange={set("projectDetails")}
+              placeholder="Anything vendors should know: timeline, must-have shots or songs, venue rules, what you expect from them."
+            />
+          </Field>
+        </div>
       </section>
 
       <section className={`${panelClasses} p-6`}>
         <h2 className="text-base font-semibold">Vendors you need</h2>
         <p className="mt-1 text-sm text-gray-600">
-          Tick what you still need. Add a budget for any of them if you have one; otherwise your total budget is used.
+          Tick what you still need. For services priced by the hour (photographer, videographer, DJ and so on), add how
+          many hours you want, for example 6, so vendors can quote the right amount. Add a budget too if you have one;
+          otherwise your total budget is used.
         </p>
         <div className="mt-4 space-y-5">
           {groups.map((g) => (
@@ -148,6 +189,20 @@ export default function WeddingForm({ initial, metros }: { initial: WeddingFormI
                         <input type="checkbox" checked={on} onChange={() => toggle(c.slug)} className="rounded border-gray-300 text-cyan-600" />
                         <span className="truncate">{c.name}</span>
                       </label>
+                      {on && HOURLY_CATEGORIES.has(c.slug) && (
+                        <div className="relative w-20 flex-none">
+                          <input
+                            inputMode="numeric"
+                            aria-label={`${c.name} hours of service`}
+                            placeholder="hrs"
+                            value={hours[c.slug] ?? ""}
+                            onChange={(e) =>
+                              setHours((s) => ({ ...s, [c.slug]: e.target.value.replace(/\D/g, "").slice(0, 2) }))
+                            }
+                            className={`${fieldClasses} text-right tabular-nums`}
+                          />
+                        </div>
+                      )}
                       {on && (
                         <div className="relative w-24 flex-none">
                           <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-sm text-gray-400">

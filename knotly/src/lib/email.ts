@@ -99,3 +99,32 @@ export async function sendDraftReviewEmail(o: {
       <p><a href="${o.link}">Review and approve in Knotly</a></p>`,
   });
 }
+
+// RSVP reminder to a guest, with their household's personal link.
+export async function sendRsvpReminder(to: string, subject: string, text: string, link: string) {
+  return resend.emails.send({
+    from: process.env.EMAIL_FROM!,
+    to: process.env.DEV_EMAIL_TO ?? to,
+    subject,
+    html: `<p>${esc(text)}</p><p><a href="${link}">RSVP now</a></p><p style="color:#888;font-size:12px">Sent by Knotly for the couple.</p>`,
+  });
+}
+
+export type OutgoingEmail = { to: string; subject: string; html: string; text: string };
+
+/** Send up to 100 emails in one Resend call. Returns one id (or null) per email, in order. */
+export async function sendEmailBatch(emails: OutgoingEmail[]): Promise<{ ids: (string | null)[]; error?: string }> {
+  if (!emails.length) return { ids: [] };
+  const r = await resend.batch.send(
+    emails.map((e) => ({
+      from: process.env.EMAIL_FROM!,
+      to: process.env.DEV_EMAIL_TO ?? e.to,
+      subject: e.subject,
+      html: e.html,
+      text: e.text,
+    }))
+  );
+  if (r.error) return { ids: emails.map(() => null), error: r.error.message };
+  const list = ((r.data as unknown as { data?: { id: string }[] })?.data ?? []) as { id: string }[];
+  return { ids: emails.map((_, i) => list[i]?.id ?? null) };
+}

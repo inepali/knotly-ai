@@ -1,10 +1,12 @@
 // Business: the listing couples see, and the publish switch.
 import { requireVendor } from "@/lib/vendor-session";
 import BusinessForm from "@/components/dashboard/BusinessForm";
+import { siteUrl } from "@/lib/site";
+import { vendorPath } from "@/lib/vendor-seo";
 
 export default async function BusinessPage() {
   const { sb, userId } = await requireVendor();
-  const [{ data: vendor }, { data: metros }] = await Promise.all([
+  const [{ data: vendor }, { data: metros }, { data: slugRow }] = await Promise.all([
     sb
       .from("vendors")
       .select(
@@ -13,7 +15,10 @@ export default async function BusinessPage() {
       .eq("id", userId)
       .maybeSingle(),
     sb.from("metros").select("slug, name, state").order("name"),
+    // Separate so the page still works before the slug migration has run (this just returns nothing).
+    sb.from("vendors").select("slug").eq("id", userId).maybeSingle(),
   ]);
+  const publicPath = vendor ? vendorPath({ slug: slugRow?.slug, metro_slug: vendor.metro_slug, category: vendor.category }) : null;
 
   return (
     <div>
@@ -23,6 +28,8 @@ export default async function BusinessPage() {
       </p>
       <BusinessForm
         metros={metros ?? []}
+        publicPath={publicPath}
+        publicUrl={publicPath ? `${siteUrl()}${publicPath}` : null}
         vendor={
           vendor && {
             businessName: vendor.business_name,

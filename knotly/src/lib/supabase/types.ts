@@ -785,74 +785,6 @@ export type Database = {
           },
         ]
       }
-      guests: {
-        Row: {
-          created_at: string | null
-          dietary: string | null
-          email: string | null
-          first_name: string
-          household: string | null
-          id: string
-          last_name: string | null
-          meal: string | null
-          phone: string | null
-          plus_one_allowed: boolean
-          plus_one_name: string | null
-          project_id: string
-          rsvp: string
-          rsvp_at: string | null
-          side: string | null
-          table_name: string | null
-          tags: string[]
-        }
-        Insert: {
-          created_at?: string | null
-          dietary?: string | null
-          email?: string | null
-          first_name: string
-          household?: string | null
-          id?: string
-          last_name?: string | null
-          meal?: string | null
-          phone?: string | null
-          plus_one_allowed?: boolean
-          plus_one_name?: string | null
-          project_id: string
-          rsvp?: string
-          rsvp_at?: string | null
-          side?: string | null
-          table_name?: string | null
-          tags?: string[]
-        }
-        Update: {
-          created_at?: string | null
-          dietary?: string | null
-          email?: string | null
-          first_name?: string
-          household?: string | null
-          id?: string
-          last_name?: string | null
-          meal?: string | null
-          phone?: string | null
-          plus_one_allowed?: boolean
-          plus_one_name?: string | null
-          project_id?: string
-          rsvp?: string
-          rsvp_at?: string | null
-          side?: string | null
-          table_name?: string | null
-          tags?: string[]
-        }
-        Relationships: [
-          {
-            foreignKeyName: "guests_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "couple_projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       lead_credit_ledger: {
         Row: {
           created_at: string | null
@@ -1303,44 +1235,6 @@ export type Database = {
             columns: ["thread_id"]
             isOneToOne: false
             referencedRelation: "threads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      registry_links: {
-        Row: {
-          id: string
-          kind: string
-          note: string | null
-          project_id: string
-          sort: number
-          title: string
-          url: string | null
-        }
-        Insert: {
-          id?: string
-          kind?: string
-          note?: string | null
-          project_id: string
-          sort?: number
-          title: string
-          url?: string | null
-        }
-        Update: {
-          id?: string
-          kind?: string
-          note?: string | null
-          project_id?: string
-          sort?: number
-          title?: string
-          url?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "registry_links_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "couple_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -2183,47 +2077,6 @@ export type Database = {
           },
         ]
       }
-      wedding_websites: {
-        Row: {
-          cover_path: string | null
-          password_hash: string | null
-          project_id: string
-          published: boolean
-          sections: Json
-          slug: string
-          template: string
-          updated_at: string | null
-        }
-        Insert: {
-          cover_path?: string | null
-          password_hash?: string | null
-          project_id: string
-          published?: boolean
-          sections?: Json
-          slug: string
-          template?: string
-          updated_at?: string | null
-        }
-        Update: {
-          cover_path?: string | null
-          password_hash?: string | null
-          project_id?: string
-          published?: boolean
-          sections?: Json
-          slug?: string
-          template?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "wedding_websites_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: true
-            referencedRelation: "couple_projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
       geography_columns: {
@@ -2453,15 +2306,6 @@ export type Database = {
         | { Args: { table_name: string }; Returns: string }
       enablelongtransactions: { Args: never; Returns: string }
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean }
-      find_rsvp: {
-        Args: {
-          p_first: string
-          p_last: string
-          p_password: string
-          p_slug: string
-        }
-        Returns: Json
-      }
       geometry: { Args: { "": string }; Returns: unknown }
       geometry_above: {
         Args: { geom1: unknown; geom2: unknown }
@@ -2646,17 +2490,9 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
-      public_website: {
-        Args: { p_password?: string; p_slug: string }
-        Returns: Json
-      }
       record_sms_usage: {
         Args: { p_outbox_id: number; p_vendor: string }
         Returns: number
-      }
-      set_website_password: {
-        Args: { p_password: string; p_project: string }
-        Returns: undefined
       }
       shared_timeline: { Args: { p_token: string }; Returns: Json }
       slugify: { Args: { t: string }; Returns: string }
@@ -3242,18 +3078,6 @@ export type Database = {
         Returns: unknown
       }
       storage_owner_folder: { Args: { p_name: string }; Returns: string }
-      submit_rsvp: {
-        Args: {
-          p_dietary?: string
-          p_guest: string
-          p_meal?: string
-          p_password: string
-          p_plus_one_name?: string
-          p_rsvp: string
-          p_slug: string
-        }
-        Returns: boolean
-      }
       unlockrows: { Args: { "": string }; Returns: number }
       updategeometrysrid: {
         Args: {

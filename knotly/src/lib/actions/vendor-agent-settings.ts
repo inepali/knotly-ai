@@ -2,6 +2,7 @@
 // (shared by chat tools and forms).
 import { z } from "zod";
 import { RuleSchema } from "@/agent/vendor/rules";
+import { CUSTOM_INSTRUCTIONS_MAX, cleanInstructions } from "@/agent/vendor/instructions";
 import { fail, ok, parseInput, type Sb } from "./result";
 
 export const SaveRuleInput = z.object({
@@ -28,6 +29,9 @@ export async function saveRule(sb: Sb, userId: string, input: unknown) {
     .insert({ vendor_id: userId, kind, params, source_text: sourceText })
     .select("id, kind, params")
     .single();
+  if (error?.message.includes("vendor_agent_rules_vendor_id_fkey")) {
+    return fail("Save your Business profile first (Business page), then add rules.");
+  }
   return error ? fail(error.message) : ok({ saved: data });
 }
 
@@ -46,6 +50,31 @@ export async function setAutonomy(sb: Sb, userId: string, input: unknown) {
 
   const { error } = await sb.from("vendor_agent_settings").update({ autonomy_level: level }).eq("vendor_id", userId);
   return error ? fail(error.message) : ok({ level });
+}
+
+export const SaveCustomInstructionsInput = z.object({
+  text: z
+    .string()
+    .transform(cleanInstructions)
+    .pipe(z.string().max(CUSTOM_INSTRUCTIONS_MAX, `Keep it under ${CUSTOM_INSTRUCTIONS_MAX.toLocaleString("en-US")} characters.`)),
+});
+export type SaveCustomInstructionsInput = z.input<typeof SaveCustomInstructionsInput>;
+
+/** Plain-English rules the structured rule types don't cover. An empty box clears them. */
+export async function saveCustomInstructions(sb: Sb, userId: string, input: unknown) {
+  const p = parseInput(SaveCustomInstructionsInput, input);
+  if (!p.ok) return p;
+  const text = p.data.text || null;
+  const updatedAt = new Date().toISOString();
+
+  const { data, error } = await sb
+    .from("vendor_agent_settings")
+    .update({ agent_custom_instructions: text, agent_custom_instructions_updated_at: updatedAt })
+    .eq("vendor_id", userId)
+    .select("vendor_id");
+  if (error) return fail(error.message);
+  if (!data?.length) return fail("Save your Business profile first (Business page), then add notes.");
+  return ok({ text, updatedAt });
 }
 
 export async function getAgentStats(sb: Sb, userId: string) {

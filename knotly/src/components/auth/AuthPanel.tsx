@@ -8,9 +8,12 @@ import { homeFor } from "@/lib/auth";
 export function AuthPanel({
   mode,
   role,
+  coupleNext,
 }: {
   mode: "signup" | "signin";
   role?: "couple" | "vendor";
+  /** Where a couple goes instead of their usual home (e.g. My Wedding prefilled from a listing page). */
+  coupleNext?: string;
 }) {
   const router = useRouter();
   return (
@@ -23,7 +26,7 @@ export function AuthPanel({
           : "Welcome back. Sign in to pick up where you left off."
       }
       onDone={(signedInAs) => {
-        router.push(homeFor(signedInAs));
+        router.push(signedInAs === "couple" && coupleNext ? coupleNext : homeFor(signedInAs));
         router.refresh();
       }}
     />

@@ -74,12 +74,14 @@ insert into couple_projects (id, couple_id, partner_names, wedding_date, metro_s
 insert into project_needs (project_id, category) values (tap_tests.id('b1'), 'photographer');
 insert into checklist_items (project_id, title) values (tap_tests.id('b1'), 'Book a photographer');
 insert into personal_events (project_id, title, starts_at) values (tap_tests.id('b1'), 'Cake tasting', now());
-insert into guests (id, project_id, first_name, last_name, household, plus_one_allowed) values
-  (tap_tests.id('e1'), tap_tests.id('b1'), 'Ana', 'Lopez', 'Lopez', true),
-  (tap_tests.id('e2'), tap_tests.id('b1'), 'Ben', 'Lopez', 'Lopez', false);
-insert into registry_links (project_id, title, url) values (tap_tests.id('b1'), 'Crate', 'https://example.com');
+insert into guest_households (id, project_id, label, plus_ones) values (tap_tests.id('e0'), tap_tests.id('b1'), 'The Lopez family', 1);
+insert into guests (id, household_id, first_name, last_name) values
+  (tap_tests.id('e1'), tap_tests.id('e0'), 'Ana', 'Lopez'),
+  (tap_tests.id('e2'), tap_tests.id('e0'), 'Ben', 'Lopez');
+insert into wedding_events (project_id, name) values (tap_tests.id('b1'), 'Ceremony');
+insert into registry_links (project_id, store, url) values (tap_tests.id('b1'), 'Crate', 'https://example.com');
 insert into budget_items (project_id, category, label, estimated) values (tap_tests.id('b1'), 'photographer', 'Photos', 4000);
-insert into wedding_websites (project_id, slug, published) values (tap_tests.id('b1'), 'tap-priya-and-sam', true);
+insert into wedding_sites (project_id, slug, published_at) values (tap_tests.id('b1'), 'tap-priya-and-sam', now());
 insert into timeline_events (id, project_id, starts_at, title, visibility) values
   (tap_tests.id('f1'), tap_tests.id('b1'), '16:00', 'Ceremony', 'everyone'),
   (tap_tests.id('f2'), tap_tests.id('b1'), '15:00', 'Couple portraits', 'couple');

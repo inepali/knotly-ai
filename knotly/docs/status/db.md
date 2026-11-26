@@ -73,3 +73,20 @@
   `couple_visible boolean` (couples read only those rows); `outbox.last_error`, `created_at`;
   `couple_projects.timeline_share_token` + `shared_timeline(token)`; `find_rsvp()` added
   beside `submit_rsvp()`; `take_help_message()` enforces the 30/day cap.
+
+## 2026-11-26: Reconciled with the couple add-ons (CONTRACT_VERSION 3)
+- The couple add-ons on `main` (Guest List, Website, RSVP, Registry, …) own guests, the website,
+  RSVP and the registry. Phase 0's versions are removed:
+  - `20261005130400_guests_website.sql` now only creates `help_usage`/`take_help_message`
+    (dropped again in 20261125) and `shared_timeline()`.
+  - New `20261126155000_reconcile_phase0.sql` drops the old `guests` (only if it has Phase 0's
+    `household` column), `wedding_websites`, `registry_links` (only if it has `kind`), and
+    `public_website` / `find_rsvp` / `submit_rsvp` / `set_website_password` on databases that ran
+    the old file (knotly-dev). It also drops Phase 0's duplicate `set_vendor_slug` trigger.
+  - `20261126160000_guest_list.sql` uses `create or replace function owns_project(p uuid)`
+    (same signature and body as Phase 0's).
+- pgTAP: couple-owned table list now uses `guest_households`, `wedding_events`, `wedding_sites`;
+  new checks that paid add-on writes need the add-on and that anon can't read the add-on tables.
+  The Phase 0 public_website / RSVP function tests are replaced.
+- `types.ts`: removed the Phase 0 `guests`, `registry_links`, `wedding_websites` and the four
+  functions. Run `pnpm types` after migrating to pick up the add-on tables.

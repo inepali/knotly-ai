@@ -1,4 +1,4 @@
--- Public website + RSVP functions, Help cap, SMS usage, triggers, storage folder policies.
+-- Public pages closed to anon, shared timeline, Help cap, SMS usage, triggers, storage folder policies.
 
 create function tap_tests.test_help_cap() returns setof text language plpgsql as $$
 declare i int; ok_count int := 0; last boolean; st text; v int;
@@ -24,84 +24,29 @@ begin
   return next is(st, '42501', 'anon cannot call take_help_quota directly');
 end $$;
 
-create function tap_tests.test_public_website() returns setof text language plpgsql as $$
-declare j jsonb; st text;
+-- The public website, RSVP and registry are served by the server with the service role (couple
+-- add-ons), so anon has no direct access to any of their tables.
+create function tap_tests.test_public_pages_closed_to_anon() returns setof text language plpgsql as $$
+declare t text; v int; st text;
 begin
+  foreach t in array array['wedding_sites', 'guest_households', 'guests', 'wedding_events', 'registry_links',
+                           'rsvp_responses', 'rsvp_households', 'couple_addons'] loop
+    perform tap_tests.login_anon();
+    v := tap_tests.n(format('select 1 from %I', t));
+    perform tap_tests.logout();
+    return next is(v, 0, format('anon reads no %s', t));
+  end loop;
+
   perform tap_tests.login_anon();
-  j := public_website('tap-priya-and-sam');
-  perform tap_tests.logout();
-  return next is(j->>'partner_names', 'Priya & Sam', 'anon reads a published site');
-  return next is(jsonb_array_length(j->'schedule'), 1, 'schedule shows only "everyone" events');
-  return next ok(j->'guests' is null and j::text not like '%Lopez%', 'no guest data on the public site');
-
-  perform tap_tests.login(tap_tests.id('a2'));
-  st := tap_tests.sqlstate_of(format('select set_website_password(%L, ''pw'')', tap_tests.id('b1')));
-  perform tap_tests.logout();
-  return next is(st, 'P0001', 'another couple cannot set A''s site password');
-
-  perform tap_tests.login(tap_tests.id('a1'));
-  perform set_website_password(tap_tests.id('b1'), 'secret word');
   st := tap_tests.sqlstate_of(format(
-    'update wedding_websites set password_hash = ''x'' where project_id = %L', tap_tests.id('b1')));
+    'insert into rsvp_responses (guest_id, status) values (%L, ''attending'')', tap_tests.id('e1')));
   perform tap_tests.logout();
-  return next is(st, '42501', 'password_hash is not directly writable');
-
-  perform tap_tests.login_anon();
-  j := public_website('tap-priya-and-sam');
-  perform tap_tests.logout();
-  return next is(j, '{"locked": true}'::jsonb, 'password-protected site is locked without it');
-
-  perform tap_tests.login_anon();
-  j := public_website('tap-priya-and-sam', 'wrong');
-  perform tap_tests.logout();
-  return next is(j->>'locked', 'true', '... and with a wrong password');
-
-  perform tap_tests.login_anon();
-  j := public_website('tap-priya-and-sam', 'secret word');
-  perform tap_tests.logout();
-  return next is(j->>'locked', 'false', '... and opens with the right one');
-
-  update wedding_websites set published = false where project_id = tap_tests.id('b1');
-  perform tap_tests.login_anon();
-  j := public_website('tap-priya-and-sam', 'secret word');
-  perform tap_tests.logout();
-  return next is(j, null, 'unpublished site returns nothing');
+  return next is(st, '42501', 'anon cannot write RSVP answers directly');
 end $$;
 
-create function tap_tests.test_rsvp() returns setof text language plpgsql as $$
-declare j jsonb; ok boolean; token uuid;
+create function tap_tests.test_shared_timeline() returns setof text language plpgsql as $$
+declare j jsonb; token uuid;
 begin
-  perform tap_tests.login_anon();
-  j := find_rsvp('tap-priya-and-sam', null, 'ana', 'LOPEZ');
-  perform tap_tests.logout();
-  return next is((j->>'found')::boolean, true, 'guest finds themselves by name (case-insensitive)');
-  return next is(jsonb_array_length(j->'guests'), 2, '... with their household');
-
-  perform tap_tests.login_anon();
-  j := find_rsvp('tap-priya-and-sam', null, 'Zed', 'Nobody');
-  perform tap_tests.logout();
-  return next is((j->>'found')::boolean, false, 'unknown name is not found');
-
-  perform tap_tests.login_anon();
-  ok := submit_rsvp('tap-priya-and-sam', null, tap_tests.id('e1'), 'attending', 'Fish', null, 'Raj');
-  perform tap_tests.logout();
-  return next is(ok, true, 'guest RSVPs without an account');
-  return next is((select rsvp || '/' || plus_one_name from guests where id = tap_tests.id('e1')),
-                 'attending/Raj', 'RSVP and plus-one saved');
-
-  perform tap_tests.login_anon();
-  ok := submit_rsvp('tap-priya-and-sam', null, tap_tests.id('e2'), 'attending', null, null, 'Sneaky');
-  perform tap_tests.logout();
-  return next is((select plus_one_name from guests where id = tap_tests.id('e2')), null,
-                 'plus-one ignored when not allowed');
-
-  insert into wedding_websites (project_id, slug, published) values (tap_tests.id('b2'), 'tap-jo-and-lee', true);
-  perform tap_tests.login_anon();
-  ok := submit_rsvp('tap-jo-and-lee', null, tap_tests.id('e1'), 'declined');
-  perform tap_tests.logout();
-  return next is(ok, false, 'another site cannot RSVP for A''s guest');
-  return next is((select rsvp from guests where id = tap_tests.id('e1')), 'attending', '... and nothing changes');
-
   token := (select timeline_share_token from couple_projects where id = tap_tests.id('b1'));
   perform tap_tests.login_anon();
   j := shared_timeline(token);

@@ -2,6 +2,9 @@
 // Server actions behind the vendor dashboard's forms. Each one re-checks who is signed in
 // (and that they're a vendor), then calls the shared server function in src/lib/actions.
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { supabaseServer } from "@/lib/supabase/server";
+import { removeAvatar, saveAvatar } from "@/lib/actions/avatar";
 import { vendorOrError } from "@/lib/vendor-session";
 import {
   addTestimonials,
@@ -25,18 +28,35 @@ import {
 } from "@/lib/actions/vendor-profile";
 import {
   removeRule,
+  saveCustomInstructions,
   saveRule,
   setAutonomy,
   type RemoveRuleInput,
+  type SaveCustomInstructionsInput,
   type SaveRuleInput,
   type SetAutonomyInput,
 } from "@/lib/actions/vendor-agent-settings";
+import { resetFeedToken } from "@/lib/actions/calendar-feed";
 import {
   saveConsultHours,
   setAvailability,
   type SaveConsultHoursInput,
   type SetAvailabilityInput,
 } from "@/lib/actions/availability";
+
+import {
+  addPortfolioImage,
+  addPortfolioVideo,
+  deletePortfolioImage,
+  deletePortfolioVideo,
+  reorderPortfolio,
+  updatePortfolioImage,
+  type AddPortfolioImageInput,
+  type AddPortfolioVideoInput,
+  type DeletePortfolioItemInput,
+  type ReorderPortfolioInput,
+  type UpdatePortfolioImageInput,
+} from "@/lib/actions/vendor-portfolio";
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -67,6 +87,36 @@ export const deleteAddOnAction = async (i: DeleteItemInput) => run((sb, u) => de
 export const setAutonomyAction = async (i: SetAutonomyInput) => run((sb, u) => setAutonomy(sb, u, i));
 export const saveRuleAction = async (i: SaveRuleInput) => run((sb, u) => saveRule(sb, u, i));
 export const removeRuleAction = async (i: RemoveRuleInput) => run((sb, u) => removeRule(sb, u, i));
+export const saveCustomInstructionsAction = async (i: SaveCustomInstructionsInput) =>
+  run((sb, u) => saveCustomInstructions(sb, u, i));
 
-export const setAvailabilityAction = async (i: SetAvailabilityInput) => run((sb, u) => setAvailability(sb, u, i));
+// Portfolio: the browser uploads photos to storage first, then records them here.
+// The public page and listings read on each request, so the dashboard refresh is enough.
+export const addPortfolioImageAction = async (i: AddPortfolioImageInput) => run((sb, u) => addPortfolioImage(sb, u, i));
+export const updatePortfolioImageAction = async (i: UpdatePortfolioImageInput) => run((sb, u) => updatePortfolioImage(sb, u, i));
+export const deletePortfolioImageAction = async (i: DeletePortfolioItemInput) => run((sb, u) => deletePortfolioImage(sb, u, i));
+export const reorderPortfolioAction = async (i: ReorderPortfolioInput) => run((sb, u) => reorderPortfolio(sb, u, i));
+export const addPortfolioVideoAction = async (i: AddPortfolioVideoInput) => run((sb, u) => addPortfolioVideo(sb, u, i));
+export const deletePortfolioVideoAction = async (i: DeletePortfolioItemInput) => run((sb, u) => deletePortfolioVideo(sb, u, i));
+
+export async function signOutAction() {
+  const sb = await supabaseServer();
+  await sb.auth.signOut();
+  redirect("/signin");
+}
+
+// The photo shows in the sidebar on every page the vendor can open (dashboard and Messages).
+export async function uploadAvatarAction(form: FormData): Promise<Result> {
+  const r = await run((sb, u) => saveAvatar(sb, u, form.get("avatar")));
+  if (r.ok) revalidatePath("/", "layout");
+  return r;
+}
+export async function removeAvatarAction(): Promise<Result> {
+  const r = await run((sb, u) => removeAvatar(sb, u));
+  if (r.ok) revalidatePath("/", "layout");
+  return r;
+}
+
+export const resetCalendarLinkAction =async () => run((sb, u) => resetFeedToken(sb, u));
+export const setAvailabilityAction =async (i: SetAvailabilityInput) => run((sb, u) => setAvailability(sb, u, i));
 export const saveConsultHoursAction = async (i: SaveConsultHoursInput) => run((sb, u) => saveConsultHours(sb, u, i));

@@ -1,5 +1,8 @@
 // src/contracts/db.ts — database shapes shared by the db, ai and ui agents.
-// CONTRACT_VERSION: 2 (2026-11-25) — `needs` folded into form-first `project_needs` (no need_id links).
+// CONTRACT_VERSION: 3 (2026-11-26) — Phase 0 guests / wedding_websites / registry_links / RSVP
+//   functions removed; the couple add-ons own those (guest_households + guests, wedding_sites,
+//   rsvp_*, registry_*). See 20261126155000_reconcile_phase0.sql.
+// v2 (2026-11-25) — `needs` folded into form-first `project_needs` (no need_id links).
 // v1 (2026-10-05) — Phase 0 schema (bookings, agent, billing, organize, guests).
 // Owned by the db agent. Row types come from the generated src/lib/supabase/types.ts
 // (`pnpm types`); the enums below mirror the table check constraints.
@@ -81,8 +84,8 @@ export type BudgetSource = (typeof BUDGET_SOURCES)[number];
 export const CHECKLIST_STATUSES = ["open", "done", "hidden"] as const;
 export const TIMELINE_VISIBILITY = ["everyone", "party", "couple"] as const;
 export const DOCUMENT_TAGS = ["contract", "invoice", "venue", "inspiration", "other"] as const;
-export const RSVP_STATUSES = ["awaiting", "attending", "declined"] as const;
-export const REGISTRY_KINDS = ["store", "cash_fund"] as const;
+// RSVP answers per guest per event (rsvp_responses.status); no row = still waiting.
+export const RSVP_STATUSES = ["attending", "declined"] as const;
 export const HELP_DAILY_LIMIT = 30; // enforced in take_help_quota() via src/lib/help-limit.ts
 
 // Storage buckets and path conventions (first folder is checked by policies).
@@ -90,5 +93,7 @@ export const BUCKETS = {
   documents: "documents", //       <project_id>/<file>, private; vendors via server signed URL
   contracts: "contracts", //       <booking_id>/<file>, private; server only
   vendorPhotos: "vendor-photos", // <vendor_id>/<file>, public read
-  websiteCovers: "website-covers", // <project_id>/<file>, public read
+  websiteCovers: "website-covers", // Phase 0, unused: website photos live in "wedding-sites" now
+  weddingSites: "wedding-sites", //  <project_id>/<uuid>.webp, public read (Wedding Website add-on)
+  guestPhotos: "guest-photos", //    <project_id>/<uuid>.webp, private (Photo Sharing add-on)
 } as const;

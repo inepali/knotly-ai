@@ -23,7 +23,7 @@ const STATUS: Record<string, string> = {
 export default async function EstimatesPage() {
   const { sb, userId } = await requireCouple();
   const [{ data }, progress] = await Promise.all([
-    // RLS only lets a couple see post threads once a vendor sent an estimate.
+    // Only threads with an estimate (quotes!inner). Vendors who only asked a question show in Messages.
     sb
       .from("threads")
       .select(

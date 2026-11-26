@@ -77,6 +77,40 @@ describe("saveWeddingForm", () => {
     expect(called("project_needs", "update").map((c) => c.args[0])).toEqual([{ budget: 9000 }, { budget: null }]);
   });
 
+  it("saves the love story and project details, and caps their length", async () => {
+    const { sb, called } = mockSb({ couple_projects: [{ data: null }, { data: { id: "p1" } }] });
+    const r = await saveWeddingForm(sb, "u1", { loveStory: "We met in 2019.", projectDetails: "" });
+    expect(r.ok).toBe(true);
+    expect(called("couple_projects", "insert")[0].args[0]).toMatchObject({
+      love_story: "We met in 2019.",
+      project_details: "",
+    });
+    const bad = mockSb();
+    expect((await saveWeddingForm(bad.sb, "u1", { loveStory: "x".repeat(2001) })).ok).toBe(false);
+  });
+
+  it("saves hours of service per category and validates the range", async () => {
+    const { sb, called } = mockSb({
+      couple_projects: [{ data: { id: "p1" } }, { data: { id: "p1" } }],
+      project_needs: { data: [] },
+    });
+    const r = await saveWeddingForm(sb, "u1", {
+      needs: ["photographer", "dj"],
+      needBudgets: [
+        { category: "photographer", budget: null, hours: 6 },
+        { category: "dj", budget: 1500, hours: null },
+      ],
+    });
+    expect(r.ok).toBe(true);
+    expect(called("project_needs", "update").map((c) => c.args[0])).toEqual([
+      { budget: null, service_hours: 6 },
+      { budget: 1500, service_hours: null },
+    ]);
+    const bad = mockSb();
+    expect((await saveWeddingForm(bad.sb, "u1", { needBudgets: [{ category: "dj", budget: null, hours: 0 }] })).ok).toBe(false);
+    expect((await saveWeddingForm(bad.sb, "u1", { needBudgets: [{ category: "dj", budget: null, hours: 25 }] })).ok).toBe(false);
+  });
+
   it("leaves project_needs alone when the form sends no needs", async () => {
     const { sb, calls } = mockSb({ couple_projects: [{ data: { id: "p1" } }, { data: { id: "p1" } }] });
     await saveWeddingForm(sb, "u1", { venue: "Crystal Ballroom" });

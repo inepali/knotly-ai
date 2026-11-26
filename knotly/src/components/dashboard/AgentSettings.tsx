@@ -5,7 +5,13 @@ import clsx from "clsx";
 import { Button } from "@/components/ui/Button";
 import { fieldClasses, panelClasses } from "@/components/ui/fields";
 import { describeRule } from "@/lib/actions/vendor-agent-settings";
-import { removeRuleAction, saveRuleAction, setAutonomyAction } from "@/app/vendor/dashboard/actions";
+import { CUSTOM_INSTRUCTIONS_MAX } from "@/agent/vendor/instructions";
+import {
+  removeRuleAction,
+  saveCustomInstructionsAction,
+  saveRuleAction,
+  setAutonomyAction,
+} from "@/app/vendor/dashboard/actions";
 import { useAction, wholeNumber } from "./useAction";
 
 export type RuleRow = { id: string; kind: string; params: Record<string, unknown>; source_text: string | null };
@@ -25,7 +31,19 @@ const LEVELS = [
   { level: 3, name: "Full", text: "Also offers discounts, within your limit." },
 ];
 
-export default function AgentSettings({ level, rules, stats }: { level: number; rules: RuleRow[]; stats: Stats | null }) {
+export default function AgentSettings({
+  level,
+  rules,
+  stats,
+  notes,
+  notesUpdatedAt,
+}: {
+  level: number;
+  rules: RuleRow[];
+  stats: Stats | null;
+  notes: string | null;
+  notesUpdatedAt: string | null;
+}) {
   const lvl = useAction();
   const rm = useAction();
   return (
@@ -104,7 +122,89 @@ export default function AgentSettings({ level, rules, stats }: { level: number; 
         )}
         <AddRule />
       </section>
+
+      <CustomInstructions saved={notes ?? ""} updatedAt={notesUpdatedAt} />
     </div>
+  );
+}
+
+const NOTE_EXAMPLES = [
+  "No ceremonies before 10am.",
+  "For elopements under 20 guests, offer the Mini package first.",
+  "Always ask if the venue allows flash photography.",
+];
+
+/** Plain-English rules the rule types above don't cover. */
+function CustomInstructions({ saved, updatedAt }: { saved: string; updatedAt: string | null }) {
+  const save = useAction();
+  const [text, setText] = useState(saved);
+  const [base, setBase] = useState(saved);
+  const [savedAt, setSavedAt] = useState(updatedAt);
+  const count = text.trim().length;
+  const tooLong = count > CUSTOM_INSTRUCTIONS_MAX;
+  const changed = text.trim() !== base.trim();
+
+  return (
+    <section className={`${panelClasses} p-6`}>
+      <h2 className="text-base font-semibold">Anything else your agent should know?</h2>
+      <p className="mt-1 text-sm text-gray-600">
+        Add rules that aren&apos;t covered above, in plain English. Your structured rules always win if they conflict.
+      </p>
+      <form
+        className="mt-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!changed || tooLong) return;
+          save.run(
+            () => saveCustomInstructionsAction({ text }),
+            () => {
+              setBase(text);
+              setSavedAt(new Date().toISOString());
+            },
+            text.trim() ? "Saved. Your agent will follow these notes." : "Notes cleared."
+          );
+        }}
+      >
+        <label htmlFor="agent-notes" className="sr-only">
+          Notes for your agent
+        </label>
+        <textarea
+          id="agent-notes"
+          rows={5}
+          className={`${fieldClasses} w-full`}
+          placeholder={NOTE_EXAMPLES.map((x) => `e.g. ${x}`).join("\n")}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          aria-describedby="agent-notes-count"
+        />
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <span id="agent-notes-count" className={clsx(tooLong ? "text-red-600" : "text-gray-500")}>
+            {count.toLocaleString("en-US")} / {CUSTOM_INSTRUCTIONS_MAX.toLocaleString("en-US")}
+          </span>
+          <div className="flex items-center gap-3">
+            {savedAt && (
+              <span className="text-gray-500">
+                Last saved{" "}
+                {new Date(savedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+              </span>
+            )}
+            <Button type="submit" color="cyan" disabled={save.pending || !changed || tooLong}>
+              {save.pending ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        </div>
+        {save.error && (
+          <p role="alert" className="mt-2 text-sm text-red-600">
+            {save.error}
+          </p>
+        )}
+        {save.notice && (
+          <p role="status" className="mt-2 text-sm text-emerald-700">
+            {save.notice}
+          </p>
+        )}
+      </form>
+    </section>
   );
 }
 

@@ -12,6 +12,7 @@
     "reset": "supabase db reset --linked && pnpm seed",
     "types": "supabase gen types typescript --linked > src/lib/supabase/types.ts",
     "seed": "tsx --env-file=.env.local scripts/seed.mts",
+    "seed:users": "tsx --env-file=.env.local scripts/seed-test-users.mts",
     "evals": "tsx --env-file=.env.local evals/vendor-agent.mts"
   },
   "dependencies": {

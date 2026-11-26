@@ -49,6 +49,20 @@ describe("projectPostBody", () => {
     expect(text).toContain("photographer");
     expect(text).toContain("$3,000 in mind for this");
   });
+  it("tells the vendor how many hours of service are wanted", () => {
+    expect(projectPostBody(project, need("dj", { service_hours: 6 }))).toContain("for about 6 hours of service");
+    expect(projectPostBody(project, need("dj", { service_hours: 1 }))).toContain("for about 1 hour of service");
+    expect(projectPostBody(project, need("dj"))).not.toContain("hours of service");
+  });
+  it("includes the couple's story and expectations when they wrote them", () => {
+    const text = projectPostBody(
+      { ...project, love_story: "We met at a bakery.", project_details: "Golden hour portraits, no flash." },
+      need("photographer")
+    );
+    expect(text).toContain("Their story: We met at a bakery.");
+    expect(text).toContain("Details and expectations: Golden hour portraits, no flash.");
+    expect(projectPostBody(project, need("photographer"))).not.toContain("Their story");
+  });
   it("falls back to the total budget", () => {
     expect(projectPostBody(project, need("dj"))).toContain("$30,000 in mind in total");
   });
