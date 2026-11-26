@@ -16,7 +16,6 @@ import { themeStyle } from "./theme";
 
 // Knotly's launch metros are all on Eastern time; store a per-wedding zone when that changes.
 const TZ = "America/New_York";
-const PENDING = new Set<Section["type"]>(["photos"]);
 const time = (iso: string) =>
   new Date(iso).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: TZ });
 
@@ -51,8 +50,7 @@ export default function WeddingSite({ site, registry = null }: { site: PublicSit
     hasEvents: site.events.length > 0,
     hasPhotos: site.photos.length > 1 || (site.photos.length === 1 && !site.sections.find((s) => s.type === "hero")?.enabled),
   });
-  // RSVP, Registry and Photo Sharing render nothing until their own add-on pages ship.
-  const shown = sections.filter((s) => !PENDING.has(s.type));
+  const shown = sections;
   const nav = shown.filter((s) => s.type !== "hero");
 
   return (
@@ -226,7 +224,16 @@ function SectionView({
         </Block>
       ) : null;
     case "photos":
-      // Filled in by the Photo Sharing add-on.
-      return null;
+      return (
+        <Block id="photos">
+          <Heading>{SECTION_LABELS.photos}</Heading>
+          <p className="mt-4 text-center opacity-80">Took a great photo? Add it to our album. No app or account needed.</p>
+          <p className="mt-6 text-center">
+            <a href={`/w/${site.slug}/photos`} className="inline-block rounded-full px-8 py-3 font-semibold text-white" style={{ background: "var(--ws-accent)" }}>
+              Share your photos
+            </a>
+          </p>
+        </Block>
+      );
   }
 }

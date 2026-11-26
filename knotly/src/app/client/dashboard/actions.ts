@@ -53,6 +53,7 @@ import {
   type SaveLinkInput,
 } from "@/lib/actions/registry";
 import { addTables, deleteTable, saveTable, setSeats, type AddTablesInput, type SaveTableInput, type SetSeatsInput, type TableIdInput } from "@/lib/actions/seating";
+import { deletePhotos, moderatePhotos, setPhotoSettings, type DeletePhotosInput, type ModerateInput, type PhotoSettingsInput } from "@/lib/actions/photo-share";
 import { createCheckoutSession } from "@/lib/stripe";
 import { siteUrl } from "@/lib/site";
 import { saveWeddingForm, type SaveWeddingFormInput } from "@/lib/actions/wedding";
@@ -229,3 +230,8 @@ export const saveTableAction = async (i: SaveTableInput) => asCouple(saveTable, 
 export const addTablesAction = async (i: AddTablesInput) => asCouple(addTables, i);
 export const deleteTableAction = async (i: TableIdInput) => asCouple(deleteTable, i);
 export const setSeatsAction = async (i: SetSeatsInput) => asCouple(setSeats, i);
+
+// Guest Photo Sharing (add-on).
+export const setPhotoSettingsAction = async (i: PhotoSettingsInput) => asCouple(setPhotoSettings, i);
+export const moderatePhotosAction = async (i: ModerateInput) => asCouple(moderatePhotos, i);
+export const deletePhotosAction = async (i: DeletePhotosInput) => asCouple(deletePhotos, i);

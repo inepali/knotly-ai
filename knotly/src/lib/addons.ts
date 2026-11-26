@@ -30,6 +30,7 @@ export const ADDON_ROUTES: Partial<Record<AddonKey, string>> = {
   registry: "/client/dashboard/registry",
   invitations: "/client/dashboard/invitations",
   seating: "/client/dashboard/seating",
+  photo_share: "/client/dashboard/photos",
 };
 
 export type Cart = {
