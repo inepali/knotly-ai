@@ -24,7 +24,9 @@ export type CatalogItem = {
 };
 
 /** Dashboard route for each add-on once it's unlocked (added as each one is built). */
-export const ADDON_ROUTES: Partial<Record<AddonKey, string>> = {};
+export const ADDON_ROUTES: Partial<Record<AddonKey, string>> = {
+  website: "/client/dashboard/website",
+};
 
 export type Cart = {
   /** What goes in the Checkout Session metadata and is granted by the webhook. */
