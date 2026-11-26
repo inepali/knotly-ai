@@ -20,7 +20,17 @@ type Vendor = {
 };
 type Metro = { slug: string; name: string; state: string };
 
-export default function BusinessForm({ vendor, metros }: { vendor: Vendor | null; metros: Metro[] }) {
+export default function BusinessForm({
+  vendor,
+  metros,
+  publicPath,
+  publicUrl,
+}: {
+  vendor: Vendor | null;
+  metros: Metro[];
+  publicPath: string | null; // the public, search-friendly page for this listing
+  publicUrl: string | null;
+}) {
   const [v, setV] = useState({
     businessName: vendor?.businessName ?? "",
     category: vendor?.category ?? "",
@@ -126,8 +136,29 @@ export default function BusinessForm({ vendor, metros }: { vendor: Vendor | null
             >
               {vendor.published ? "Unpublish" : "Publish my listing"}
             </Button>
+            {vendor.published && publicPath && (
+              <a
+                href={publicPath}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                View public page ↗
+              </a>
+            )}
             <Status error={publish.error} notice="" />
           </div>
+          {publicUrl && (
+            <p className="mt-3 text-xs text-gray-500">
+              {vendor.published ? (
+                <>
+                  Your public page, which search engines can find: <span className="break-all text-gray-700">{publicUrl}</span>
+                </>
+              ) : (
+                "Your public page goes live, and search engines can find it, when you publish."
+              )}
+            </p>
+          )}
         </section>
       )}
 
