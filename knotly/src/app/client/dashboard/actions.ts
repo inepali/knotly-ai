@@ -33,6 +33,8 @@ import {
   type SitePhotoInput,
   type SitePhotoRef,
 } from "@/lib/actions/website";
+import { saveRsvpSettings, sendRsvpReminders, type SaveRsvpSettingsInput } from "@/lib/actions/rsvp";
+import { sendRsvpReminder } from "@/lib/email";
 import { createCheckoutSession } from "@/lib/stripe";
 import { siteUrl } from "@/lib/site";
 import { saveWeddingForm, type SaveWeddingFormInput } from "@/lib/actions/wedding";
@@ -170,3 +172,14 @@ export const publishSiteAction = async (i: PublishSiteInput) => {
 export const addSitePhotoAction = async (i: SitePhotoInput) => asCouple(addSitePhoto, i);
 export const removeSitePhotoAction = async (i: SitePhotoRef) => asCouple(removeSitePhoto, i);
 export const moveSitePhotoAction = async (i: SitePhotoRef) => asCouple(moveSitePhoto, i);
+
+// RSVP (add-on).
+export const saveRsvpSettingsAction = async (i: SaveRsvpSettingsInput) => asCouple(saveRsvpSettings, i);
+export async function sendRsvpRemindersAction(): Promise<Result & { sent?: number }> {
+  const me = await coupleOrError();
+  if (me.error !== undefined) return { ok: false, error: me.error };
+  const r = await sendRsvpReminders(me.sb, me.userId, { send: sendRsvpReminder, siteUrl: siteUrl() });
+  if (!r.ok) return r;
+  refresh();
+  return { ok: true, sent: r.data.sent };
+}

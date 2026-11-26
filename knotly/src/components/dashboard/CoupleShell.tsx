@@ -13,6 +13,7 @@ const links = [
   { href: "/client/dashboard/budget", label: "My Budgets" },
   { href: "/client/dashboard/guests", label: "Guest List" },
   { href: "/client/dashboard/website", label: "Website" },
+  { href: "/client/dashboard/rsvp", label: "RSVP" },
   { href: "/client/dashboard/add-ons", label: "Add-ons" },
 ];
 

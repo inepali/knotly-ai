@@ -99,3 +99,13 @@ export async function sendDraftReviewEmail(o: {
       <p><a href="${o.link}">Review and approve in Knotly</a></p>`,
   });
 }
+
+// RSVP reminder to a guest, with their household's personal link.
+export async function sendRsvpReminder(to: string, subject: string, text: string, link: string) {
+  return resend.emails.send({
+    from: process.env.EMAIL_FROM!,
+    to: process.env.DEV_EMAIL_TO ?? to,
+    subject,
+    html: `<p>${esc(text)}</p><p><a href="${link}">RSVP now</a></p><p style="color:#888;font-size:12px">Sent by Knotly for the couple.</p>`,
+  });
+}

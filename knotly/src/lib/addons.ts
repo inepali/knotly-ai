@@ -26,6 +26,7 @@ export type CatalogItem = {
 /** Dashboard route for each add-on once it's unlocked (added as each one is built). */
 export const ADDON_ROUTES: Partial<Record<AddonKey, string>> = {
   website: "/client/dashboard/website",
+  rsvp: "/client/dashboard/rsvp",
 };
 
 export type Cart = {

@@ -27,6 +27,7 @@ export async function loadPublicSite(slug: string) {
   const m = project.metros as unknown as { name: string; state: string } | null;
   const metro = m ? `${m.name}, ${m.state}` : null;
   return {
+    projectId: site.project_id as string,
     slug: site.slug as string,
     theme: site.theme as ThemeKey,
     title: (site.title as string | null) || (project.partner_names as string | null) || "Our wedding",

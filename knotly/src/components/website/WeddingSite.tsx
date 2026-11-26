@@ -14,7 +14,7 @@ import { themeStyle } from "./theme";
 
 // Knotly's launch metros are all on Eastern time; store a per-wedding zone when that changes.
 const TZ = "America/New_York";
-const PENDING = new Set<Section["type"]>(["rsvp", "registry", "photos"]);
+const PENDING = new Set<Section["type"]>(["registry", "photos"]);
 const time = (iso: string) =>
   new Date(iso).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: TZ });
 
@@ -193,9 +193,20 @@ function SectionView({ s, site, date, cover }: { s: Section; site: PublicSite; d
       );
     }
     case "rsvp":
+      return (
+        <Block id="rsvp">
+          <Heading>{SECTION_LABELS.rsvp}</Heading>
+          <p className="mt-4 text-center opacity-80">We hope you can join us. Please let us know either way.</p>
+          <p className="mt-6 text-center">
+            <a href={`/w/${site.slug}/rsvp`} className="inline-block rounded-full px-8 py-3 font-semibold text-white" style={{ background: "var(--ws-accent)" }}>
+              RSVP
+            </a>
+          </p>
+        </Block>
+      );
     case "registry":
     case "photos":
-      // Filled in by the RSVP, Registry and Photo Sharing add-ons.
+      // Filled in by the Registry and Photo Sharing add-ons.
       return null;
   }
 }
