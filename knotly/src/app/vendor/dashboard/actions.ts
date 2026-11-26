@@ -42,6 +42,20 @@ import {
   type SetAvailabilityInput,
 } from "@/lib/actions/availability";
 
+import {
+  addPortfolioImage,
+  addPortfolioVideo,
+  deletePortfolioImage,
+  deletePortfolioVideo,
+  reorderPortfolio,
+  updatePortfolioImage,
+  type AddPortfolioImageInput,
+  type AddPortfolioVideoInput,
+  type DeletePortfolioItemInput,
+  type ReorderPortfolioInput,
+  type UpdatePortfolioImageInput,
+} from "@/lib/actions/vendor-portfolio";
+
 type Result = { ok: true } | { ok: false; error: string };
 
 /** Runs a shared action as the signed-in vendor and refreshes the dashboard's pages. */
@@ -71,6 +85,15 @@ export const deleteAddOnAction = async (i: DeleteItemInput) => run((sb, u) => de
 export const setAutonomyAction = async (i: SetAutonomyInput) => run((sb, u) => setAutonomy(sb, u, i));
 export const saveRuleAction = async (i: SaveRuleInput) => run((sb, u) => saveRule(sb, u, i));
 export const removeRuleAction = async (i: RemoveRuleInput) => run((sb, u) => removeRule(sb, u, i));
+
+// Portfolio: the browser uploads photos to storage first, then records them here.
+// The public page and listings read on each request, so the dashboard refresh is enough.
+export const addPortfolioImageAction = async (i: AddPortfolioImageInput) => run((sb, u) => addPortfolioImage(sb, u, i));
+export const updatePortfolioImageAction = async (i: UpdatePortfolioImageInput) => run((sb, u) => updatePortfolioImage(sb, u, i));
+export const deletePortfolioImageAction = async (i: DeletePortfolioItemInput) => run((sb, u) => deletePortfolioImage(sb, u, i));
+export const reorderPortfolioAction = async (i: ReorderPortfolioInput) => run((sb, u) => reorderPortfolio(sb, u, i));
+export const addPortfolioVideoAction = async (i: AddPortfolioVideoInput) => run((sb, u) => addPortfolioVideo(sb, u, i));
+export const deletePortfolioVideoAction = async (i: DeletePortfolioItemInput) => run((sb, u) => deletePortfolioVideo(sb, u, i));
 
 export async function signOutAction() {
   const sb = await supabaseServer();

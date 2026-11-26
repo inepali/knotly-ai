@@ -9,6 +9,9 @@ import { categoryLabel } from "@/lib/categories";
 import { VendorOffer, type AddOn, type Package } from "@/components/vendor/Offer";
 import HelpChat from "@/components/help/HelpChat";
 import { panelClasses } from "@/components/ui/fields";
+import { getPortfolio } from "@/lib/actions/vendor-portfolio";
+import { toGallery } from "@/lib/portfolio";
+import { PortfolioGallery } from "@/components/vendor/PortfolioGallery";
 
 const city = (slug: string | null) =>
   slug ? slug.replace(/-([a-z]{2})$/, (_, s) => `, ${s.toUpperCase()}`).replace(/^\w/, (c) => c.toUpperCase()) : null;
@@ -35,6 +38,12 @@ export default async function VendorProfilePage({ params }: PageProps<"/vendors/
     sb.from("threads").select("id").eq("vendor_id", id).limit(1).maybeSingle(),
   ]);
   if (!vendor || (!thread && user.id !== id)) notFound();
+  // Every vendor's portfolio shows here, pay-per-use included (RLS: published vendors or your own).
+  const gallery = toGallery(await getPortfolio(sb, id), {
+    business: vendor.business_name,
+    kind: categoryLabel(vendor.category),
+    place: city(vendor.metro_slug),
+  });
 
   return (
     <main className="mx-auto max-w-3xl space-y-8 px-4 py-8 sm:px-6">
@@ -63,6 +72,8 @@ export default async function VendorProfilePage({ params }: PageProps<"/vendors/
           </Link>
         )}
       </header>
+
+      <PortfolioGallery photos={gallery.photos} videos={gallery.videos} name={vendor.business_name} />
 
       <section aria-label={`Ask ${vendor.business_name}`} className={`${panelClasses} flex h-96 flex-col p-5`}>
         <h2 className="text-base font-semibold">Ask {vendor.business_name}</h2>

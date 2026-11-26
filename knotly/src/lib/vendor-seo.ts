@@ -34,6 +34,7 @@ export type SeoVendor = {
   homeUrl: string;
   cityUrl?: string; // absolute URL of the city's listing page, e.g. /wedding-vendors/charlotte-nc
   listingUrl?: string; // absolute URL of the category + city listing page
+  images?: string[]; // absolute URLs of portfolio photos, cover first
   city: { name: string; state: string } | null;
   radiusMiles: number | null;
   packages: { name: string; description?: string | null; price: number }[];
@@ -60,6 +61,7 @@ export function vendorJsonLd(v: SeoVendor) {
       address: { "@type": "PostalAddress", addressLocality: v.city.name, addressRegion: v.city.state, addressCountry: "US" },
     }),
     ...(v.website && { sameAs: [v.website] }),
+    ...(v.images?.length && { image: v.images.slice(0, 10) }),
     ...(prices.length && {
       priceRange: Math.min(...prices) === Math.max(...prices) ? `$${Math.min(...prices)}` : `$${Math.min(...prices)}-$${Math.max(...prices)}`,
     }),
