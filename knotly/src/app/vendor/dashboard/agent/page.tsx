@@ -18,6 +18,8 @@ export default async function AgentPage() {
       <AgentSettings
         level={r.settings?.autonomy_level ?? 0}
         rules={(r.rules ?? []) as RuleRow[]}
+        notes={r.settings?.agent_custom_instructions ?? null}
+        notesUpdatedAt={r.settings?.agent_custom_instructions_updated_at ?? null}
         stats={
           s && {
             sentAlone: s.sent_alone ?? 0,

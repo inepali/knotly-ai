@@ -1,6 +1,7 @@
 // src/components/vendor/EscalationCard.tsx
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function EscalationCard({
@@ -10,7 +11,7 @@ export default function EscalationCard({
   esc: {
     id: string;
     reason: string;
-    decision: { message: string; responseType: string };
+    decision: { message: string; responseType: string; citedInstruction?: string | null };
     total: number | null;
     status: string;
   };
@@ -42,6 +43,14 @@ export default function EscalationCard({
         {esc.status === "reminded" ? "⏰ Waiting over 2h · " : ""}
         {esc.reason}
       </p>
+      {esc.decision.citedInstruction && (
+        <p className="text-xs text-gray-600">
+          Because of your note: <em>&ldquo;{esc.decision.citedInstruction}&rdquo;</em>{" "}
+          <Link href="/vendor/dashboard/agent" className="text-cyan-700 underline">
+            Edit note
+          </Link>
+        </p>
+      )}
       <blockquote className="border-l-2 pl-3 text-sm text-gray-600">
         {coupleMessage}
       </blockquote>

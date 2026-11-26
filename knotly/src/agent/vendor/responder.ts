@@ -4,6 +4,7 @@ import { decide } from "./decide";
 import { priceQuote } from "./pricing";
 import { gate } from "./gate";
 import { act, escalate } from "./act";
+import { verifyCitation } from "./instructions";
 import { notify } from "@/lib/email";
 
 export async function runVendorAgent(threadId: string, guidance?: string) {
@@ -55,7 +56,12 @@ export async function runVendorAgent(threadId: string, guidance?: string) {
     return;
   }
 
-  const decision = await decide(ctx, guidance);
+  const raw = await decide(ctx, guidance);
+  // Only an exact excerpt of the vendor's notes is kept; it's shown to the vendor, never the couple.
+  const decision = {
+    ...raw,
+    citedInstruction: verifyCitation(raw.citedInstruction, ctx.settings.agent_custom_instructions),
+  };
   const priced = priceQuote(decision, ctx);
   const result = gate(decision, ctx, priced);
 
