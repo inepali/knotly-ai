@@ -12,6 +12,9 @@ import { jsonLdString, metaDescription, vendorJsonLd, vendorPath } from "@/lib/v
 import { cityPath, listingNoun, listingPath, lowerNoun } from "@/lib/listing";
 import { isPublicVendor } from "@/lib/public-listing";
 import { Breadcrumbs } from "@/components/listing/ListingParts";
+import { getPortfolio } from "@/lib/actions/vendor-portfolio";
+import { toGallery } from "@/lib/portfolio";
+import { PortfolioGallery } from "@/components/vendor/PortfolioGallery";
 import { VendorOffer, type AddOn, type Package } from "@/components/vendor/Offer";
 import { SiteHeader } from "@/components/ui/SiteHeader";
 import { SiteFooter } from "@/components/ui/SiteFooter";
@@ -53,6 +56,11 @@ const getVendor = cache(async (slug: string) => {
   return { ...row, city: metro ?? null };
 });
 
+// The vendor's photos and videos, shared by the metadata (cover as the share image) and the page.
+const getGallery = cache(async (v: { id: string; business_name: string; category: string }, place: string) =>
+  toGallery(await getPortfolio(supabaseAdmin, v.id), { business: v.business_name, kind: categoryLabel(v.category), place })
+);
+
 function copy(v: NonNullable<Awaited<ReturnType<typeof getVendor>>>) {
   const kind = categoryLabel(v.category);
   const place = v.city ? `${v.city.name}, ${v.city.state}` : "the Carolinas";
@@ -74,12 +82,14 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const c = copy(v);
   const path = vendorPath(v);
   const url = path ? `${siteUrl()}${path}` : undefined;
+  const cover = (await getGallery(v, c.place)).photos[0];
+  const images = cover ? [{ url: cover.full, alt: cover.alt, width: cover.width ?? undefined, height: cover.height ?? undefined }] : undefined;
   return {
     title: c.title,
     description: c.description,
     alternates: url ? { canonical: url } : undefined,
-    openGraph: { type: "website", siteName: SITE_NAME, title: c.title, description: c.description, url },
-    twitter: { card: "summary", title: c.title, description: c.description },
+    openGraph: { type: "website", siteName: SITE_NAME, title: c.title, description: c.description, url, images },
+    twitter: { card: cover ? "summary_large_image" : "summary", title: c.title, description: c.description, images: cover ? [cover.full] : undefined },
   };
 }
 
@@ -94,6 +104,7 @@ export default async function PublicVendorPage({ params }: { params: Params }) {
 
   const c = copy(v);
   const url = `${siteUrl()}${path}`;
+  const gallery = await getGallery(v, c.place);
   const prices = v.vendor_packages.map((p) => p.price);
   const ld = vendorJsonLd({
     name: v.business_name,
@@ -102,6 +113,7 @@ export default async function PublicVendorPage({ params }: { params: Params }) {
     website: v.website,
     url,
     homeUrl: siteUrl(),
+    images: gallery.photos.map((p) => p.full),
     cityUrl: v.metro_slug ? `${siteUrl()}${cityPath(v.metro_slug)}` : undefined,
     listingUrl: v.metro_slug ? `${siteUrl()}${listingPath(v.metro_slug, v.category)}` : undefined,
     city: v.city,
@@ -145,6 +157,8 @@ export default async function PublicVendorPage({ params }: { params: Params }) {
             )}
           </div>
         </header>
+
+        <PortfolioGallery photos={gallery.photos} videos={gallery.videos} name={v.business_name} />
 
         <section aria-labelledby="packages">
           <h2 id="packages" className="text-xl font-semibold tracking-tight">

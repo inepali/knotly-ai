@@ -30,6 +30,7 @@ export type ListedVendor = {
   service_radius_miles: number | null;
   min_price: number | null;
   updated_at: string | null;
+  cover_thumb_path?: string | null; // from the portfolio migration
 };
 
 /** Public vendors who serve a city (based there or within their service radius). Null = every city. */

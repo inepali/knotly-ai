@@ -22,6 +22,7 @@ export default async function VendorShell({ children }: { children: React.ReactN
     { href: "/vendor/dashboard/needs-you", label: "Needs You", badge: count ?? 0 },
     { href: "/inbox", label: "Messages" },
     { href: "/vendor/dashboard/business", label: "Business" },
+    { href: "/vendor/dashboard/portfolio", label: "Portfolio" },
     { href: "/vendor/dashboard/packages", label: "Packages & Add-ons" },
     { href: "/vendor/dashboard/knowledge", label: "Knowledge" },
     { href: "/vendor/dashboard/agent", label: "Agent Settings" },

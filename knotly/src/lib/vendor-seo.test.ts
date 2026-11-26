@@ -90,6 +90,11 @@ describe("vendorJsonLd", () => {
       vendor.url,
     ]);
   });
+  it("lists portfolio photos as images, only when there are some", () => {
+    expect(business.image).toBeUndefined();
+    const withPhotos = vendorJsonLd({ ...vendor, images: ["https://cdn/a.webp"] })["@graph"][0] as Record<string, unknown>;
+    expect(withPhotos.image).toEqual(["https://cdn/a.webp"]);
+  });
   it("escapes < so text can't close the script tag", () => {
     expect(jsonLdString({ a: "</script><b>" })).not.toContain("</script>");
   });

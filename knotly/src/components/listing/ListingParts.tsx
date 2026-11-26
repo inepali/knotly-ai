@@ -3,6 +3,7 @@ import Link from "next/link";
 import { categoryLabel } from "@/lib/categories";
 import { metaDescription, vendorPath } from "@/lib/vendor-seo";
 import { usd } from "@/lib/listing";
+import { portfolioUrl } from "@/lib/portfolio";
 import type { ListedVendor } from "@/lib/public-listing";
 
 export function Breadcrumbs({ items }: { items: { name: string; href?: string }[] }) {
@@ -50,13 +51,23 @@ export function VendorCard({ v, cityName, homeCityName }: { v: ListedVendor; cit
         href={href}
         className="flex h-full gap-4 rounded-2xl border border-gray-200 p-4 transition hover:border-cyan-300 hover:shadow-sm"
       >
-        {/* Cover photo goes here once the Portfolio ships (vendor-portfolio-spec.md). */}
-        <div
-          aria-hidden="true"
-          className="flex h-16 w-16 flex-none items-center justify-center rounded-xl bg-cyan-50 text-xl font-semibold text-cyan-700"
-        >
-          {v.business_name.trim().charAt(0).toUpperCase()}
-        </div>
+        {v.cover_thumb_path ? (
+          // eslint-disable-next-line @next/next/no-img-element -- public CDN thumbnail, already 600px
+          <img
+            src={portfolioUrl(v.cover_thumb_path)}
+            alt={`${v.business_name}, ${categoryLabel(v.category).toLowerCase()}`}
+            loading="lazy"
+            decoding="async"
+            className="h-20 w-20 flex-none rounded-xl bg-gray-100 object-cover"
+          />
+        ) : (
+          <div
+            aria-hidden="true"
+            className="flex h-20 w-20 flex-none items-center justify-center rounded-xl bg-cyan-50 text-xl font-semibold text-cyan-700"
+          >
+            {v.business_name.trim().charAt(0).toUpperCase()}
+          </div>
+        )}
         <div className="min-w-0">
           <h3 className="font-semibold text-gray-900">{v.business_name}</h3>
           <p className="text-sm text-gray-600">
