@@ -34,7 +34,8 @@ import {
   type SitePhotoRef,
 } from "@/lib/actions/website";
 import { saveRsvpSettings, sendRsvpReminders, type SaveRsvpSettingsInput } from "@/lib/actions/rsvp";
-import { sendRsvpReminder } from "@/lib/email";
+import { sendEmailBatch, sendRsvpReminder } from "@/lib/email";
+import { saveDesign, sendInvitations, type SaveDesignInput, type SendInvitationsInput } from "@/lib/actions/invitations";
 import {
   deleteGiftNote,
   deleteRegistryFund,
@@ -210,3 +211,14 @@ export const saveRegistryItemAction = async (i: SaveItemInput) => asCouple(saveR
 export const deleteRegistryItemAction = async (i: IdInput) => asCouple(deleteRegistryItem, i);
 export const removeClaimAction = async (i: IdInput) => asCouple(removeClaim, i);
 export const deleteGiftNoteAction = async (i: IdInput) => asCouple(deleteGiftNote, i);
+
+// Save-the-Dates & Invitations (add-on).
+export const saveDesignAction = async (i: SaveDesignInput) => asCouple(saveDesign, i);
+export async function sendInvitationsAction(i: SendInvitationsInput): Promise<Result & { sent?: number; failed?: number }> {
+  const me = await coupleOrError();
+  if (me.error !== undefined) return { ok: false, error: me.error };
+  const r = await sendInvitations(me.sb, me.userId, i, { sendBatch: sendEmailBatch, siteUrl: siteUrl() });
+  if (!r.ok) return r;
+  refresh();
+  return { ok: true, sent: r.data.sent, failed: r.data.failed };
+}
