@@ -19,6 +19,20 @@ import {
   type ImportHouseholdsInput,
   type SaveEventInput,
 } from "@/lib/actions/guests";
+import {
+  addSitePhoto,
+  checkSlug,
+  moveSitePhoto,
+  publishSite,
+  removeSitePhoto,
+  saveSite,
+  setSitePassword,
+  type PublishSiteInput,
+  type SaveSiteInput,
+  type SetSitePasswordInput,
+  type SitePhotoInput,
+  type SitePhotoRef,
+} from "@/lib/actions/website";
 import { createCheckoutSession } from "@/lib/stripe";
 import { siteUrl } from "@/lib/site";
 import { saveWeddingForm, type SaveWeddingFormInput } from "@/lib/actions/wedding";
@@ -143,3 +157,16 @@ export const importHouseholdsAction = async (i: ImportHouseholdsInput) => asCoup
 export const applyGuestCountAction = async () => asCouple((sb, u) => setGuestCountFromList(sb, u), undefined);
 export const saveEventAction = async (i: SaveEventInput) => asCouple(saveEvent, i);
 export const deleteEventAction = async (i: DeleteHouseholdInput) => asCouple(deleteEvent, i);
+
+// Wedding Website (add-on). RLS also refuses writes without an active add-on.
+export const saveSiteAction = async (i: SaveSiteInput) => asCouple(saveSite, i);
+export const checkSlugAction = async (slug: string) => asCouple(checkSlug, { slug });
+export const setSitePasswordAction = async (i: SetSitePasswordInput) => asCouple(setSitePassword, i);
+export const publishSiteAction = async (i: PublishSiteInput) => {
+  const r = await asCouple(publishSite, i);
+  if (r.ok) revalidatePath("/w/[slug]", "page");
+  return r;
+};
+export const addSitePhotoAction = async (i: SitePhotoInput) => asCouple(addSitePhoto, i);
+export const removeSitePhotoAction = async (i: SitePhotoRef) => asCouple(removeSitePhoto, i);
+export const moveSitePhotoAction = async (i: SitePhotoRef) => asCouple(moveSitePhoto, i);

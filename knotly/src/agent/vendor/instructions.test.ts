@@ -18,7 +18,7 @@ describe("instructionsBlock", () => {
   it("wraps the notes and states the priority order", () => {
     const b = instructionsBlock(NOTES);
     expect(b).toContain("<vendor_custom_instructions>\nNo ceremonies before 10am.");
-    expect(b).toMatch(/structured rules .* > these notes/s);
+    expect(b).toMatch(/structured rules [\s\S]* > these notes/);
   });
 
   it("doesn't let the vendor close the block early", () => {
