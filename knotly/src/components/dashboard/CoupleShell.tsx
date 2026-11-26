@@ -16,6 +16,7 @@ const links = [
   { href: "/client/dashboard/rsvp", label: "RSVP" },
   { href: "/client/dashboard/registry", label: "Registry" },
   { href: "/client/dashboard/invitations", label: "Invitations" },
+  { href: "/client/dashboard/seating", label: "Seating" },
   { href: "/client/dashboard/add-ons", label: "Add-ons" },
 ];
 
