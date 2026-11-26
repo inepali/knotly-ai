@@ -28,9 +28,11 @@ import {
 } from "@/lib/actions/vendor-profile";
 import {
   removeRule,
+  saveCustomInstructions,
   saveRule,
   setAutonomy,
   type RemoveRuleInput,
+  type SaveCustomInstructionsInput,
   type SaveRuleInput,
   type SetAutonomyInput,
 } from "@/lib/actions/vendor-agent-settings";
@@ -85,6 +87,8 @@ export const deleteAddOnAction = async (i: DeleteItemInput) => run((sb, u) => de
 export const setAutonomyAction = async (i: SetAutonomyInput) => run((sb, u) => setAutonomy(sb, u, i));
 export const saveRuleAction = async (i: SaveRuleInput) => run((sb, u) => saveRule(sb, u, i));
 export const removeRuleAction = async (i: RemoveRuleInput) => run((sb, u) => removeRule(sb, u, i));
+export const saveCustomInstructionsAction = async (i: SaveCustomInstructionsInput) =>
+  run((sb, u) => saveCustomInstructions(sb, u, i));
 
 // Portfolio: the browser uploads photos to storage first, then records them here.
 // The public page and listings read on each request, so the dashboard refresh is enough.

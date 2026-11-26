@@ -125,10 +125,11 @@ export async function escalate(
     total: priced?.total ?? null,
     due_at: new Date(Date.now() + 2 * 3_600_000).toISOString(), // remind after 2h (Lesson 16)
   });
+  const because = d.citedInstruction ? ` Because of your note: "${d.citedInstruction}".` : "";
   await notify(
     await emailOf(ctx.vendor.id),
     "Your Knotly agent needs you",
-    `Reason: ${reason}. It drafted a reply for you to approve, edit, or reject.`,
+    `Reason: ${reason}.${because} It drafted a reply for you to approve, edit, or reject.`,
     `${APP}/vendor/inbox`
   );
 }
