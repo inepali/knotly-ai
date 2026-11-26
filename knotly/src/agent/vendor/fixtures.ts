@@ -22,6 +22,8 @@ export function makeCtx(o: Partial<VendorCtx> = {}): VendorCtx {
       quote_valid_days: 14,
       signature: null,
       holding_reply: "Thanks!",
+      agent_custom_instructions: null,
+      agent_custom_instructions_updated_at: null,
     },
     rules: [
       { kind: "price_floor", amount: 2800 },
@@ -79,5 +81,6 @@ export const quote = (
   sources: [`package:${packageId}`],
   quote: { packageId, addOnIds: [], discountPercent },
   escalationReason: null,
+  citedInstruction: null,
   ...extra,
 });
