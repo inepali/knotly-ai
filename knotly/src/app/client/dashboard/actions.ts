@@ -2,6 +2,9 @@
 // Server actions behind the couple dashboard's forms. Each one re-checks who is signed in,
 // then calls the shared function in src/lib/actions (the shared server functions).
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { supabaseServer } from "@/lib/supabase/server";
+import { removeAvatar, saveAvatar } from "@/lib/actions/avatar";
 import { coupleOrError } from "@/lib/couple-session";
 import { saveWeddingForm, type SaveWeddingFormInput } from "@/lib/actions/wedding";
 import { postProject, requestMoreEstimates } from "@/lib/actions/posting";
@@ -18,6 +21,30 @@ const DASH = "/client/dashboard";
 
 function refresh() {
   revalidatePath(DASH, "layout");
+}
+
+export async function signOutAction() {
+  const sb = await supabaseServer();
+  await sb.auth.signOut();
+  redirect("/signin");
+}
+
+export async function uploadAvatarAction(formData: FormData): Promise<Result> {
+  const me = await coupleOrError();
+  if (me.error !== undefined) return { ok: false, error: me.error };
+  const r = await saveAvatar(me.sb, me.userId, formData.get("avatar"));
+  if (!r.ok) return r;
+  refresh();
+  return { ok: true };
+}
+
+export async function removeAvatarAction(): Promise<Result> {
+  const me = await coupleOrError();
+  if (me.error !== undefined) return { ok: false, error: me.error };
+  const r = await removeAvatar(me.sb, me.userId);
+  if (!r.ok) return r;
+  refresh();
+  return { ok: true };
 }
 
 export async function saveWeddingAction(input: SaveWeddingFormInput): Promise<Result> {

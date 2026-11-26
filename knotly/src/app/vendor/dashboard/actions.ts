@@ -31,6 +31,7 @@ import {
   type SaveRuleInput,
   type SetAutonomyInput,
 } from "@/lib/actions/vendor-agent-settings";
+import { resetFeedToken } from "@/lib/actions/calendar-feed";
 import {
   saveConsultHours,
   setAvailability,
@@ -68,5 +69,6 @@ export const setAutonomyAction = async (i: SetAutonomyInput) => run((sb, u) => s
 export const saveRuleAction = async (i: SaveRuleInput) => run((sb, u) => saveRule(sb, u, i));
 export const removeRuleAction = async (i: RemoveRuleInput) => run((sb, u) => removeRule(sb, u, i));
 
-export const setAvailabilityAction = async (i: SetAvailabilityInput) => run((sb, u) => setAvailability(sb, u, i));
+export const resetCalendarLinkAction = async () => run((sb, u) => resetFeedToken(sb, u));
+export const setAvailabilityAction =async (i: SetAvailabilityInput) => run((sb, u) => setAvailability(sb, u, i));
 export const saveConsultHoursAction = async (i: SaveConsultHoursInput) => run((sb, u) => saveConsultHours(sb, u, i));

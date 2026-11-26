@@ -5,7 +5,10 @@ import { NO_THREAD } from "@/agent/vendor/rules";
 import { fail, ok, parseInput, type Sb } from "./result";
 
 export const SetAvailabilityInput = z.object({
-  dates: z.array(z.string().describe("YYYY-MM-DD")).min(1).max(60),
+  dates: z
+    .array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use dates like 2027-05-01.").describe("YYYY-MM-DD"))
+    .min(1)
+    .max(60),
   status: z.enum(["blocked", "booked", "free"]),
 });
 export type SetAvailabilityInput = z.input<typeof SetAvailabilityInput>;
@@ -39,18 +42,37 @@ export async function setAvailability(sb: Sb, userId: string, input: unknown) {
   if (!p.ok) return p;
   const { dates, status } = p.data;
 
-  const { error } =
-    status === "free"
-      ? await sb
-          .from("vendor_availability")
-          .delete()
-          .eq("vendor_id", userId)
-          .in("date", dates)
-          .eq("thread_id", NO_THREAD)
-      : await sb
-          .from("vendor_availability")
-          .upsert(dates.map((date) => ({ vendor_id: userId, date, status, thread_id: NO_THREAD })));
+  // Nothing can be blocked or booked in the past. The cutoff is a day back so a vendor whose
+  // "today" is behind UTC isn't turned away; the calendar itself disables every past day.
+  if (status !== "free") {
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    if (dates.some((d) => d < cutoff)) return fail("You can't block or book dates in the past.");
+  }
+
+  if (status === "free") {
+    const { error } = await sb
+      .from("vendor_availability")
+      .delete()
+      .eq("vendor_id", userId)
+      .in("date", dates)
+      .eq("thread_id", NO_THREAD);
+    if (error) return fail(error.message);
+    return ok({ dates, status });
+  }
+
+  const { error } = await sb
+    .from("vendor_availability")
+    .upsert(dates.map((date) => ({ vendor_id: userId, date, status, thread_id: NO_THREAD })));
   if (error) return fail(error.message);
+  // Changing blocked <-> booked replaces the old marker instead of leaving both on the day.
+  const { error: swapError } = await sb
+    .from("vendor_availability")
+    .delete()
+    .eq("vendor_id", userId)
+    .in("date", dates)
+    .eq("thread_id", NO_THREAD)
+    .neq("status", status);
+  if (swapError) return fail(swapError.message);
   return ok({ dates, status });
 }
 
