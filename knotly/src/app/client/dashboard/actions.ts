@@ -35,6 +35,22 @@ import {
 } from "@/lib/actions/website";
 import { saveRsvpSettings, sendRsvpReminders, type SaveRsvpSettingsInput } from "@/lib/actions/rsvp";
 import { sendRsvpReminder } from "@/lib/email";
+import {
+  deleteGiftNote,
+  deleteRegistryFund,
+  deleteRegistryItem,
+  deleteRegistryLink,
+  removeClaim,
+  saveRegistryFund,
+  saveRegistryIntro,
+  saveRegistryItem,
+  saveRegistryLink,
+  type IdInput,
+  type IntroInput,
+  type SaveFundInput,
+  type SaveItemInput,
+  type SaveLinkInput,
+} from "@/lib/actions/registry";
 import { createCheckoutSession } from "@/lib/stripe";
 import { siteUrl } from "@/lib/site";
 import { saveWeddingForm, type SaveWeddingFormInput } from "@/lib/actions/wedding";
@@ -183,3 +199,14 @@ export async function sendRsvpRemindersAction(): Promise<Result & { sent?: numbe
   refresh();
   return { ok: true, sent: r.data.sent };
 }
+
+// Gift Registry (add-on).
+export const saveRegistryIntroAction = async (i: IntroInput) => asCouple(saveRegistryIntro, i);
+export const saveRegistryLinkAction = async (i: SaveLinkInput) => asCouple(saveRegistryLink, i);
+export const deleteRegistryLinkAction = async (i: IdInput) => asCouple(deleteRegistryLink, i);
+export const saveRegistryFundAction = async (i: SaveFundInput) => asCouple(saveRegistryFund, i);
+export const deleteRegistryFundAction = async (i: IdInput) => asCouple(deleteRegistryFund, i);
+export const saveRegistryItemAction = async (i: SaveItemInput) => asCouple(saveRegistryItem, i);
+export const deleteRegistryItemAction = async (i: IdInput) => asCouple(deleteRegistryItem, i);
+export const removeClaimAction = async (i: IdInput) => asCouple(removeClaim, i);
+export const deleteGiftNoteAction = async (i: IdInput) => asCouple(deleteGiftNote, i);

@@ -1,30 +1,17 @@
 "use server";
 // Public RSVP: find your invitation, then send your answers. Everything runs as the service role
 // after checking the site (published, unlocked, RSVP active) and the household's personal token.
-import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { loadPublicSite } from "@/lib/public-site";
-import { isUnlocked, unlockCookieName } from "@/lib/site-password";
-import { helpSubject, takeHelpQuota } from "@/lib/help-limit";
+import { guestQuota, openSiteFor } from "@/lib/public-site-access";
 import { loadRsvpData, saveRsvp } from "@/lib/rsvp-data";
 import { findHouseholds, isClosed, validateSubmission, type Submission } from "@/lib/rsvp";
 
 const FIND_PER_DAY = 40;
 const SUBMIT_PER_DAY = 30;
 
-async function openSite(slug: string) {
-  const site = await loadPublicSite(slug);
-  if (!site || site.archived || !site.owned.includes("rsvp")) return null;
-  const cookie = (await cookies()).get(unlockCookieName(site.slug))?.value;
-  if (!isUnlocked(site.slug, site.passwordHash, cookie)) return null;
-  return site;
-}
-
-async function quota(kind: string, limit: number) {
-  const { subject } = helpSubject(null, (await headers()).get("x-forwarded-for"));
-  return takeHelpQuota(`rsvp-${kind}:${subject}`, limit);
-}
+const openSite = (slug: string) => openSiteFor(slug, "rsvp");
+const quota = (kind: string, limit: number) => guestQuota(`rsvp-${kind}`, limit);
 
 export async function findRsvpAction(
   slug: string,
