@@ -6,6 +6,11 @@ import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { removeAvatar, saveAvatar } from "@/lib/actions/avatar";
 import { vendorOrError } from "@/lib/vendor-session";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { sendOneEmail } from "@/lib/email";
+import { requestSiteUrl } from "@/lib/site";
+import { cancelReviewRequest, sendReviewRequest } from "@/lib/actions/review-requests";
+import type { CancelReviewRequestInput, SendReviewRequestInput } from "@/lib/review-requests";
 import {
   addTestimonials,
   deleteAddOn,
@@ -73,6 +78,16 @@ async function run(
   revalidatePath("/vendor/dashboard", "layout");
   return { ok: true };
 }
+
+// Review requests: ask a past client (by email, or a couple from Knotly) to write a review.
+export async function sendReviewRequestAction(i: SendReviewRequestInput) {
+  const me = await vendorOrError();
+  if (me.error !== undefined) return { ok: false as const, error: me.error };
+  const r = await sendReviewRequest(me.sb, me.userId, i, { admin: supabaseAdmin, send: sendOneEmail, siteUrl: await requestSiteUrl() });
+  if (r.ok) revalidatePath("/vendor/dashboard/business");
+  return r.ok ? { ok: true as const, emailed: r.data.emailed } : { ok: false as const, error: r.error };
+}
+export const cancelReviewRequestAction = async (i: CancelReviewRequestInput) => run((sb, u) => cancelReviewRequest(sb, u, i));
 
 export const saveBusinessAction = async (i: SaveBusinessProfileInput) => run((sb, u) => saveBusinessProfile(sb, u, i));
 export const publishAction = async (i: PublishProfileInput) => run((sb, u) => publishProfile(sb, u, i));

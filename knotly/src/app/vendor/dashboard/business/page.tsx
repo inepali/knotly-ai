@@ -3,6 +3,7 @@ import { requireVendor } from "@/lib/vendor-session";
 import BusinessForm from "@/components/dashboard/BusinessForm";
 import { requestSiteUrl } from "@/lib/site";
 import { vendorPath } from "@/lib/vendor-seo";
+import { listConnectedClients, listReviewRequests } from "@/lib/actions/review-requests";
 
 export default async function BusinessPage() {
   const { sb, userId } = await requireVendor();
@@ -10,7 +11,7 @@ export default async function BusinessPage() {
     sb
       .from("vendors")
       .select(
-        "business_name, category, bio, metro_slug, website, published, vendor_packages(id), testimonials(id, author_name, rating, body, verified, created_at)"
+        "business_name, category, bio, metro_slug, website, published, vendor_packages(id), testimonials(id, author_name, rating, body, verified, source, created_at)"
       )
       .eq("id", userId)
       .maybeSingle(),
@@ -18,6 +19,7 @@ export default async function BusinessPage() {
     // Separate so the page still works before the slug migration has run (this just returns nothing).
     sb.from("vendors").select("slug").eq("id", userId).maybeSingle(),
   ]);
+  const [clients, reviewRequests] = await Promise.all([listConnectedClients(sb, userId), listReviewRequests(sb, userId)]);
   const publicPath = vendor ? vendorPath({ slug: slugRow?.slug, metro_slug: vendor.metro_slug, category: vendor.category }) : null;
 
   return (
@@ -40,6 +42,8 @@ export default async function BusinessPage() {
             published: vendor.published,
             packageCount: vendor.vendor_packages.length,
             reviews: [...vendor.testimonials].sort((a, b) => b.created_at.localeCompare(a.created_at)),
+            clients,
+            reviewRequests,
           }
         }
       />

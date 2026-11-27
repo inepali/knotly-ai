@@ -55,6 +55,7 @@ describe("prompts", () => {
     "/client/dashboard/my-wedding",
     "/client/dashboard/vendors",
     "/client/dashboard/budget",
+    "/client/dashboard/reviews",
     "/vendor/dashboard/needs-you",
     "/vendor/dashboard/business",
     "/vendor/dashboard/packages",

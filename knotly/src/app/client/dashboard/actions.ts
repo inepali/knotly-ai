@@ -6,6 +6,11 @@ import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { removeAvatar, saveAvatar } from "@/lib/actions/avatar";
 import { coupleOrError } from "@/lib/couple-session";
+import { after } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { refreshVendorEmbedding } from "@/lib/embeddings";
+import { submitClientReview } from "@/lib/actions/review-requests";
+import type { WriteReviewInput } from "@/lib/review-requests";
 import { startAddonCheckout } from "@/lib/actions/addons";
 import {
   deleteEvent,
@@ -256,4 +261,15 @@ export async function importGiftsAction(): Promise<Result & { added?: number; ma
   if (!r.ok) return r;
   refresh();
   return { ok: true, ...r.data };
+}
+
+// Reviews a vendor asked this couple for. Written as "Verified Knotly client".
+export async function submitClientReviewAction(i: WriteReviewInput & { requestId: string }) {
+  const me = await coupleOrError();
+  if (me.error !== undefined) return { ok: false as const, error: me.error };
+  const r = await submitClientReview(me.sb, supabaseAdmin, me.userId, i);
+  if (!r.ok) return { ok: false as const, error: r.error };
+  after(() => refreshVendorEmbedding(r.data.vendorId));
+  revalidatePath("/client/dashboard", "layout");
+  return { ok: true as const };
 }

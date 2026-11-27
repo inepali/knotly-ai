@@ -6,8 +6,10 @@ import { fieldClasses, labelClasses, panelClasses } from "@/components/ui/fields
 import { VENDOR_CATEGORIES } from "@/lib/categories";
 import { addReviewsAction, deleteReviewAction, publishAction, saveBusinessAction } from "@/app/vendor/dashboard/actions";
 import { useAction, wholeNumber } from "./useAction";
+import ReviewRequests, { type Client, type SentRequest } from "./ReviewRequests";
+import { reviewBadge } from "@/lib/review-requests";
 
-type Review = { id: string; author_name: string; rating: number | null; body: string; verified: boolean };
+type Review = { id: string; author_name: string; rating: number | null; body: string; verified: boolean; source?: string | null };
 type Vendor = {
   businessName: string;
   category: string;
@@ -17,6 +19,8 @@ type Vendor = {
   published: boolean;
   packageCount: number;
   reviews: Review[];
+  clients: Client[];
+  reviewRequests: SentRequest[];
 };
 type Metro = { slug: string; name: string; state: string };
 
@@ -162,19 +166,22 @@ export default function BusinessForm({
         </section>
       )}
 
-      {vendor && <Reviews reviews={vendor.reviews} />}
+      {vendor && <Reviews reviews={vendor.reviews} clients={vendor.clients} requests={vendor.reviewRequests} />}
     </div>
   );
 }
 
-function Reviews({ reviews }: { reviews: Review[] }) {
+function Reviews({ reviews, clients, requests }: { reviews: Review[]; clients: Client[]; requests: SentRequest[] }) {
   const add = useAction();
   const remove = useAction();
   const [r, setR] = useState({ authorName: "", rating: "", body: "" });
   return (
     <section className={`${panelClasses} p-6`}>
       <h2 className="text-base font-semibold">Reviews ({reviews.length})</h2>
-      <p className="mt-1 text-sm text-gray-600">Paste reviews from past clients exactly as written. They show as unverified until the client confirms.</p>
+      <p className="mt-1 text-sm text-gray-600">
+        Ask past clients to write a review, or paste one exactly as written. Pasted reviews are labelled &ldquo;Added by vendor&rdquo;.
+      </p>
+      <ReviewRequests clients={clients} requests={requests} />
       {reviews.length > 0 && (
         <ul className="mt-4 space-y-3">
           {reviews.map((t) => (
@@ -183,8 +190,8 @@ function Reviews({ reviews }: { reviews: Review[] }) {
               <p className="mt-1 text-xs text-gray-500">
                 {t.author_name}
                 {t.rating ? ` · ${t.rating}★` : ""}
-                {t.verified ? " · verified" : " · unverified"}
-                {!t.verified && (
+                {` · ${reviewBadge(t)}`}
+                {!t.verified && (t.source ?? "vendor") === "vendor" && (
                   <button
                     type="button"
                     className="ml-3 text-red-600 underline disabled:opacity-50"
@@ -199,8 +206,9 @@ function Reviews({ reviews }: { reviews: Review[] }) {
           ))}
         </ul>
       )}
+      <h3 className="mt-6 text-sm font-semibold text-gray-900">Paste a review</h3>
       <form
-        className="mt-5 grid gap-3 sm:grid-cols-[1fr_6rem]"
+        className="mt-3 grid gap-3 sm:grid-cols-[1fr_6rem]"
         onSubmit={(e) => {
           e.preventDefault();
           add.run(

@@ -40,8 +40,16 @@ export default async function CoupleShell({ children }: { children: React.ReactN
   // Which add-ons this wedding has (RLS: their own). Expired ones stay readable, so they aren't locked.
   const { data: owned } = await sb.from("couple_addons").select("addon_key");
   const have = new Set((owned ?? []).map((o) => o.addon_key as string));
+  // Vendors' review requests: the link only appears while some are waiting.
+  const { count: reviewsWaiting } = await sb
+    .from("review_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("couple_id", userId)
+    .eq("status", "sent")
+    .gt("expires_at", new Date().toISOString());
   const links = [
     ...PLANNING,
+    ...(reviewsWaiting ? [{ href: "/client/dashboard/reviews", label: `Reviews (${reviewsWaiting})` }] : []),
     {
       href: "/client/dashboard/add-ons",
       label: "Add-ons",
