@@ -47,10 +47,11 @@ create table guest_event_invites (
   primary key (household_id, event_id)
 );
 
--- Owner check shared by the policies below.
-create function owns_project(p_project uuid) returns boolean
+-- Owner check shared by the policies below. Phase 0 (20261005130000) defines the same function
+-- with the same signature and body; "or replace" lets this run after it.
+create or replace function owns_project(p uuid) returns boolean
 language sql stable security definer set search_path = public as $$
-  select exists (select 1 from couple_projects where id = p_project and couple_id = auth.uid())
+  select exists (select 1 from couple_projects where id = p and couple_id = auth.uid())
 $$;
 revoke all on function owns_project(uuid) from public, anon;
 grant execute on function owns_project(uuid) to authenticated;
