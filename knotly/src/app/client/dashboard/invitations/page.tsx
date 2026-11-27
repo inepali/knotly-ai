@@ -1,7 +1,7 @@
 // Save-the-Dates & Invitations (add-on): design, preview, email to households, print.
 import { requireAddon } from "@/lib/addon-access";
 import { loadInvitations } from "@/lib/actions/invitations";
-import { siteUrl } from "@/lib/site";
+import { requestSiteUrl } from "@/lib/site";
 import InvitationsEditor from "@/components/invitations/InvitationsEditor";
 
 export default async function InvitationsPage() {
@@ -12,7 +12,7 @@ export default async function InvitationsPage() {
     <div>
       <h1 className="text-2xl font-semibold tracking-tight">Save-the-Dates & Invitations</h1>
       <p className="mt-1 text-sm text-gray-600">Design once, email every household its own link, and print cards with a QR code.</p>
-      <InvitationsEditor data={r.data} baseUrl={siteUrl()} />
+      <InvitationsEditor data={r.data} baseUrl={await requestSiteUrl()} />
     </div>
   );
 }

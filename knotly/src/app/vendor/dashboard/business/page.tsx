@@ -1,7 +1,7 @@
 // Business: the listing couples see, and the publish switch.
 import { requireVendor } from "@/lib/vendor-session";
 import BusinessForm from "@/components/dashboard/BusinessForm";
-import { siteUrl } from "@/lib/site";
+import { requestSiteUrl } from "@/lib/site";
 import { vendorPath } from "@/lib/vendor-seo";
 
 export default async function BusinessPage() {
@@ -29,7 +29,7 @@ export default async function BusinessPage() {
       <BusinessForm
         metros={metros ?? []}
         publicPath={publicPath}
-        publicUrl={publicPath ? `${siteUrl()}${publicPath}` : null}
+        publicUrl={publicPath ? `${await requestSiteUrl()}${publicPath}` : null}
         vendor={
           vendor && {
             businessName: vendor.business_name,

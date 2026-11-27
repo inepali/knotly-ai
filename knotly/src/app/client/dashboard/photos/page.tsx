@@ -1,7 +1,7 @@
 // Guest Photo Sharing (add-on): QR sign, approve/hide, download everything.
 import { requireAddon } from "@/lib/addon-access";
 import { loadPhotoShare } from "@/lib/actions/photo-share";
-import { siteUrl } from "@/lib/site";
+import { requestSiteUrl } from "@/lib/site";
 import { qrSvg } from "@/lib/qr";
 import PhotoModeration from "@/components/photos/PhotoModeration";
 
@@ -9,7 +9,7 @@ export default async function PhotosPage() {
   const { sb, userId } = await requireAddon("photo_share");
   const r = await loadPhotoShare(sb, userId);
   if (!r.ok) return <p className="text-sm text-red-600">{r.error}</p>;
-  const link = r.data.site ? `${siteUrl()}/w/${r.data.site.slug}/photos` : null;
+  const link = r.data.site ? `${await requestSiteUrl()}/w/${r.data.site.slug}/photos` : null;
   return (
     <div>
       <h1 className="text-2xl font-semibold tracking-tight">Guest Photo Sharing</h1>
