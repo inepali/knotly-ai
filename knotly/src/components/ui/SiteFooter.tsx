@@ -15,10 +15,10 @@ export function SiteFooter() {
               <p className="text-sm text-gray-600">Wedding planning in the Carolinas.</p>
             </div>
           </div>
-          <nav className="flex gap-8 text-sm text-gray-700">
-            <Link href="/signup" className="hover:text-gray-900">Get started</Link>
+          <nav aria-label="Footer" className="flex flex-wrap gap-x-8 gap-y-2 text-sm text-gray-700">
+            <Link href="/wedding-vendors" className="hover:text-gray-900">Find vendors</Link>
+            <Link href="/signup?role=vendor" className="hover:text-gray-900">For vendors</Link>
             <Link href="/signin" className="hover:text-gray-900">Sign in</Link>
-            <Link href="/inbox" className="hover:text-gray-900">Messages</Link>
           </nav>
         </div>
         <p className="border-t border-gray-200 py-6 text-sm text-gray-500">
