@@ -28,6 +28,7 @@ export type MailItem = {
   folder: Folder;
   isNew: boolean; // received and not opened yet
   warnings: string[]; // the agent's notes on one of your own drafts (e.g. "below your price floor")
+  quoteId: string | null; // the estimate this message came with, if any
 };
 
 type Row = {
@@ -39,7 +40,7 @@ type Row = {
   body: string;
   created_at: string;
   read_at: string | null;
-  payload: { warnings?: string[] } | null;
+  payload: { warnings?: string[]; quoteId?: string } | null;
   threads: {
     vendor_id: string;
     vendors: { business_name: string } | null;
@@ -81,6 +82,7 @@ function toItem(r: Row, side: Side): MailItem {
     folder,
     isNew: folder === "inbox" && !r.read_at,
     warnings: folder === "drafts" && mine ? (r.payload?.warnings ?? []) : [],
+    quoteId: typeof r.payload?.quoteId === "string" ? r.payload.quoteId : null,
   };
 }
 
