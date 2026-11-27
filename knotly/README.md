@@ -56,6 +56,10 @@ Setup, once:
    right after, to catch files uploaded in between.
 4. Keep the Supabase buckets for a few weeks as a fallback. Switching back is just the env var.
 
+If uploads fail with "Upload was blocked", check the setup from your machine:
+`node --env-file=.env.local --experimental-strip-types scripts/storage-check.mts http://localhost:3000`
+(pass the address you open the app at). It tests the keys and the bucket's CORS rules and says what to fix.
+
 How files are served:
 
 - Public images (portfolio, website photos) use `/media/{area}/{path}`, which redirects to a 24-hour
