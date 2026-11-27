@@ -2,6 +2,7 @@
 // (answers come only from the vendor's own knowledge base), and the message thread.
 // For now only those couples (and the vendor previewing their own page) can open it.
 import Link from "next/link";
+import { reviewBadge } from "@/lib/review-requests";
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -30,7 +31,7 @@ export default async function VendorProfilePage({ params }: PageProps<"/vendors/
     sb
       .from("vendors")
       .select(
-        "id, business_name, category, bio, metro_slug, website, vendor_packages(id, name, description, price, inclusions), vendor_addons(id, name, description, price), testimonials(id, author_name, rating, body, verified)"
+        "id, business_name, category, bio, metro_slug, website, vendor_packages(id, name, description, price, inclusions), vendor_addons(id, name, description, price), testimonials(id, author_name, rating, body, verified, source)"
       )
       .eq("id", id)
       .maybeSingle(),
@@ -106,7 +107,7 @@ export default async function VendorProfilePage({ params }: PageProps<"/vendors/
                 <p className="mt-1 text-xs text-gray-500">
                   {t.author_name}
                   {t.rating ? ` · ${t.rating}★` : ""}
-                  {t.verified ? "" : " · unverified"}
+                  {` · ${reviewBadge(t)}`}
                 </p>
               </li>
             ))}

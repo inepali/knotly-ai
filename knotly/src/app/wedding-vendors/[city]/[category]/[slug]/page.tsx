@@ -8,6 +8,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { categoryLabel } from "@/lib/categories";
 import { SITE_NAME, siteUrl } from "@/lib/site";
+import { reviewBadge } from "@/lib/review-requests";
 import { jsonLdString, metaDescription, vendorJsonLd, vendorPath } from "@/lib/vendor-seo";
 import { cityPath, listingNoun, listingPath, lowerNoun } from "@/lib/listing";
 import { isPublicVendor } from "@/lib/public-listing";
@@ -35,7 +36,7 @@ type Row = {
   metros: { name: string; state: string } | { name: string; state: string }[] | null;
   vendor_packages: Package[];
   vendor_addons: AddOn[];
-  testimonials: { id: string; author_name: string; rating: number | null; body: string; verified: boolean }[];
+  testimonials: { id: string; author_name: string; rating: number | null; body: string; verified: boolean; source: string | null }[];
 };
 
 // One lookup per request, shared by the metadata and the page. Public vendors only (published,
@@ -44,7 +45,7 @@ const getVendor = cache(async (slug: string) => {
   const { data } = await supabaseAdmin
     .from("vendors")
     .select(
-      "id, business_name, category, bio, metro_slug, website, slug, service_radius_miles, published, listed_until, metros(name, state), vendor_packages(id, name, description, price, inclusions), vendor_addons(id, name, description, price), testimonials(id, author_name, rating, body, verified)"
+      "id, business_name, category, bio, metro_slug, website, slug, service_radius_miles, published, listed_until, metros(name, state), vendor_packages(id, name, description, price, inclusions), vendor_addons(id, name, description, price), testimonials(id, author_name, rating, body, verified, source)"
     )
     .eq("slug", slug)
     .eq("published", true)
@@ -204,7 +205,7 @@ export default async function PublicVendorPage({ params }: { params: Params }) {
                   <p className="mt-1 text-sm text-gray-500">
                     {t.author_name}
                     {t.rating ? ` · ${t.rating} out of 5` : ""}
-                    {t.verified ? " · verified by the couple" : ""}
+                    {` · ${reviewBadge(t)}`}
                   </p>
                 </li>
               ))}

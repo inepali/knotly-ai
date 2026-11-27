@@ -128,3 +128,19 @@ export async function sendEmailBatch(emails: OutgoingEmail[]): Promise<{ ids: (s
   const list = ((r.data as unknown as { data?: { id: string }[] })?.data ?? []) as { id: string }[];
   return { ids: emails.map((_, i) => list[i]?.id ?? null) };
 }
+
+/** Send one email. Returns an error message instead of throwing. */
+export async function sendOneEmail(e: OutgoingEmail): Promise<{ error?: string }> {
+  try {
+    const r = await resend.emails.send({
+      from: process.env.EMAIL_FROM!,
+      to: process.env.DEV_EMAIL_TO ?? e.to, // safety net while testing
+      subject: e.subject,
+      html: e.html,
+      text: e.text,
+    });
+    return r.error ? { error: r.error.message } : {};
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "send failed" };
+  }
+}

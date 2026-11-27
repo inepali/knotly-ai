@@ -173,7 +173,7 @@ export async function addTestimonials(sb: Sb, userId: string, input: unknown) {
     .select("id, author_name");
   if (error) return fail(error.message);
   reembed(userId);
-  return ok({ saved: data, note: "Shown as unverified until the client confirms." });
+  return ok({ saved: data, note: "Shown as \"Added by vendor\". To get verified reviews, ask clients from the Business page." });
 }
 
 export async function publishProfile(sb: Sb, userId: string, input: unknown, ctx: ActionCtx = {}) {
