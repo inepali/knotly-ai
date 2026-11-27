@@ -12,7 +12,7 @@ export default async function AddonsPage({ searchParams }: { searchParams: Promi
   const { unlocked, canceled } = await searchParams;
   const { sb, userId } = await requireCouple();
   const r = await listAddons(sb, userId);
-  const { projectId, catalog, owned, active } = r.ok ? r.data : { projectId: null, catalog: [], owned: [], active: [] };
+  const { projectId, catalog, owned, active, devUnlocked } = r.ok ? r.data : { projectId: null, catalog: [], owned: [], active: [], devUnlocked: false };
   const singles = catalog.filter((c) => c.kind === "one_time");
   const bundles = catalog.filter((c) => c.kind === "bundle");
   const ownedBy = new Map(owned.map((o) => [o.addon_key, o]));
@@ -26,6 +26,11 @@ export default async function AddonsPage({ searchParams }: { searchParams: Promi
         wedding. Your guest list is always free.
       </p>
 
+      {devUnlocked && (
+        <p className="mt-4 rounded-lg bg-violet-50 px-3 py-2 text-sm text-violet-900">
+          Development mode: <code>DEV_UNLOCK_ALL_ADDONS</code> is on, so every add-on is unlocked for testing. Checkout still works.
+        </p>
+      )}
       {unlocked && (
         <p role="status" className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
           Thank you! {unlocked.split(",").map(name).join(", ")} {unlocked.includes(",") ? "are" : "is"} unlocking now. It
