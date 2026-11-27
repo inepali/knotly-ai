@@ -6,7 +6,12 @@ import { Button } from "./Button";
 import { Container } from "./Container";
 import { Logo } from "./Logo";
 
-const links = [["Messages", "/inbox"]] as const;
+const links = [
+  ["How it works", "/#how"],
+  ["Planning tools", "/#planning"],
+  ["For vendors", "/#vendors"],
+  ["Find vendors", "/wedding-vendors"],
+] as const;
 
 function MenuIcon(props: React.ComponentPropsWithoutRef<"svg">) {
   return (
