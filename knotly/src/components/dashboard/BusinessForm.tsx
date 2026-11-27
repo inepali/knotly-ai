@@ -4,8 +4,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { fieldClasses, labelClasses, panelClasses } from "@/components/ui/fields";
 import { VENDOR_CATEGORIES } from "@/lib/categories";
-import { addReviewsAction, deleteReviewAction, publishAction, saveBusinessAction } from "@/app/vendor/dashboard/actions";
-import { useAction, wholeNumber } from "./useAction";
+import { deleteReviewAction, publishAction, saveBusinessAction } from "@/app/vendor/dashboard/actions";
+import { useAction } from "./useAction";
 import ReviewRequests, { type Client, type SentRequest } from "./ReviewRequests";
 import { reviewBadge } from "@/lib/review-requests";
 
@@ -172,14 +172,12 @@ export default function BusinessForm({
 }
 
 function Reviews({ reviews, clients, requests }: { reviews: Review[]; clients: Client[]; requests: SentRequest[] }) {
-  const add = useAction();
   const remove = useAction();
-  const [r, setR] = useState({ authorName: "", rating: "", body: "" });
   return (
     <section className={`${panelClasses} p-6`}>
       <h2 className="text-base font-semibold">Reviews ({reviews.length})</h2>
       <p className="mt-1 text-sm text-gray-600">
-        Ask past clients to write a review, or paste one exactly as written. Pasted reviews are labelled &ldquo;Added by vendor&rdquo;.
+        Reviews come from your clients: ask them below and they write it themselves.
       </p>
       <ReviewRequests clients={clients} requests={requests} />
       {reviews.length > 0 && (
@@ -206,30 +204,7 @@ function Reviews({ reviews, clients, requests }: { reviews: Review[]; clients: C
           ))}
         </ul>
       )}
-      <h3 className="mt-6 text-sm font-semibold text-gray-900">Paste a review</h3>
-      <form
-        className="mt-3 grid gap-3 sm:grid-cols-[1fr_6rem]"
-        onSubmit={(e) => {
-          e.preventDefault();
-          add.run(
-            () =>
-              addReviewsAction({
-                reviews: [{ authorName: r.authorName.trim(), rating: wholeNumber(r.rating), body: r.body.trim() }],
-              }),
-            () => setR({ authorName: "", rating: "", body: "" })
-          );
-        }}
-      >
-        <input className={fieldClasses} placeholder="Client name" value={r.authorName} onChange={(e) => setR({ ...r, authorName: e.target.value })} required />
-        <input className={fieldClasses} inputMode="numeric" placeholder="Stars 1-5" value={r.rating} onChange={(e) => setR({ ...r, rating: e.target.value })} />
-        <textarea className={`${fieldClasses} sm:col-span-2`} rows={3} placeholder="Their review (at least 20 characters)" value={r.body} onChange={(e) => setR({ ...r, body: e.target.value })} required minLength={20} maxLength={2000} />
-        <div className="flex items-center gap-3 sm:col-span-2">
-          <Button type="submit" color="gray" disabled={add.pending}>
-            Add review
-          </Button>
-          <Status error={add.error || remove.error} notice="" />
-        </div>
-      </form>
+      {remove.error && <Status error={remove.error} notice="" />}
     </section>
   );
 }

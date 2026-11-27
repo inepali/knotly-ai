@@ -36,7 +36,7 @@ const COUPLE_DOC = `FOR COUPLES (pages in the sidebar):
 const VENDOR_DOC = `FOR VENDORS (pages in the sidebar):
 - Needs You [/vendor/dashboard/needs-you]: decisions your agent wants you to make (approve, edit, guide the agent, take over, or reject), and leads you're answering by hand.
 - Messages [/inbox]: conversations with couples.
-- Business [/vendor/dashboard/business]: name, category, city, bio, website, reviews, and the publish switch. To publish you need a bio, a city and at least one package. Under Reviews, "Ask a past client for a review" sends a request to a couple you talked to on Knotly (their review shows as Verified Knotly client) or to any email (shows as Invited review). Reviews you paste yourself show as Added by vendor.
+- Business [/vendor/dashboard/business]: name, category, city, bio, website, reviews, and the publish switch. To publish you need a bio, a city and at least one package. Under Reviews, "Ask a past client for a review" sends a request to a couple you talked to on Knotly (their review shows as Verified Knotly client) or to any email (shows as Invited review). Vendors can no longer add reviews themselves; older ones they added show as Added by vendor.
 - Packages & Add-ons [/vendor/dashboard/packages]: what couples can book and optional extras. Your agent prices estimates from these. Whole US dollars.
 - Knowledge [/vendor/dashboard/knowledge]: websites, social links and FAQs your assistant reads to answer couples' questions accurately.
 - Agent Settings [/vendor/dashboard/agent]: autonomy level and rules. Levels: 0 Shadow (every reply is a draft for you), 1 Assist (answers alone, estimates need your approval),
