@@ -16,7 +16,11 @@ export function devUnlockAll(env: Record<string, string | undefined> = process.e
 const granted = new Set<string>(); // per server instance: grant once per wedding
 
 /** Give this wedding every active one-time add-on (service-role client). Safe to call often. */
-export async function ensureDevAddons(admin: SupabaseClient, projectId: string, env = process.env): Promise<boolean> {
+export async function ensureDevAddons(
+  admin: SupabaseClient,
+  projectId: string,
+  env: Record<string, string | undefined> = process.env
+): Promise<boolean> {
   if (!devUnlockAll(env) || granted.has(projectId)) return false;
   const { data: catalog, error } = await admin.from("addon_catalog").select("key").eq("active", true).eq("kind", "one_time");
   if (error || !catalog?.length) return false;
