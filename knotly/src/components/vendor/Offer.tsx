@@ -33,7 +33,7 @@ export function PackageCard({
       )}
     >
       <h4 className={clsx("flex items-center text-sm font-semibold", featured ? "text-white" : "text-gray-900")}>
-        <Logomark className="h-6 w-6 flex-none" />
+        <Logomark className="h-5 w-auto flex-none" />
         <span className="ml-3">{pkg.name}</span>
         {featured && (
           <span className="ml-auto rounded-full bg-cyan-500 px-2 py-0.5 text-xs font-semibold text-white">Popular</span>
