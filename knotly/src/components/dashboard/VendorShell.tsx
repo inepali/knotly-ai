@@ -32,7 +32,6 @@ export default async function VendorShell({ children }: { children: React.ReactN
     <DashboardShell
       links={links}
       help="vendor"
-      align="left"
       footer={
         <AccountBlock
           name={vendor?.business_name || profile?.full_name || profile?.email || "Your account"}
