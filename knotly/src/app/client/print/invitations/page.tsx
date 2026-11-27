@@ -2,7 +2,7 @@
 import type { Metadata } from "next";
 import { requireAddon } from "@/lib/addon-access";
 import { cardLink, loadInvitations } from "@/lib/actions/invitations";
-import { siteUrl } from "@/lib/site";
+import { requestSiteUrl } from "@/lib/site";
 import PrintCard from "@/components/invitations/PrintCard";
 import PrintButton from "@/components/invitations/PrintButton";
 import type { Kind } from "@/lib/invitations";
@@ -16,7 +16,7 @@ export default async function PrintInvitations({ searchParams }: { searchParams:
   const r = await loadInvitations(sb, userId);
   if (!r.ok) return <p className="p-8 text-sm text-red-600">{r.error}</p>;
   const d = r.data;
-  const base = siteUrl();
+  const base = await requestSiteUrl();
   const general = d.site ? `${base}/w/${d.site.slug}${kind === "invitation" && d.rsvp ? "/rsvp" : ""}` : base;
   const cards = q.each === "1" && d.households.length
     ? d.households.map((h) => ({ key: h.id, link: cardLink(d, kind, h.invite_token, base), label: h.label, code: d.rsvp && kind === "invitation" ? h.rsvp_code : null }))

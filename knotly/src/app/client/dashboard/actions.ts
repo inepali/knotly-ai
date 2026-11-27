@@ -58,7 +58,7 @@ import { addTables, deleteTable, saveTable, setSeats, type AddTablesInput, type 
 import { deletePhotos, moderatePhotos, setPhotoSettings, type DeletePhotosInput, type ModerateInput, type PhotoSettingsInput } from "@/lib/actions/photo-share";
 import { deleteGift, importFromRegistry, markThanked, saveGift, type GiftIdInput, type SaveGiftInput, type ThankedInput } from "@/lib/actions/thank-you";
 import { createCheckoutSession } from "@/lib/stripe";
-import { siteUrl } from "@/lib/site";
+import { requestSiteUrl } from "@/lib/site";
 import { saveWeddingForm, type SaveWeddingFormInput } from "@/lib/actions/wedding";
 import { postProject, requestMoreEstimates } from "@/lib/actions/posting";
 import {
@@ -161,7 +161,7 @@ export async function recordBookingAction(input: RecordBookingInput): Promise<Re
 export async function startAddonCheckoutAction(keys: string[]): Promise<Result & { url?: string }> {
   const me = await coupleOrError();
   if (me.error !== undefined) return { ok: false, error: me.error };
-  const r = await startAddonCheckout(me.sb, me.userId, { keys }, { createSession: createCheckoutSession, siteUrl: siteUrl() });
+  const r = await startAddonCheckout(me.sb, me.userId, { keys }, { createSession: createCheckoutSession, siteUrl: await requestSiteUrl() });
   return r.ok ? { ok: true, url: r.data.url } : r;
 }
 
@@ -206,7 +206,7 @@ export const saveRsvpSettingsAction = async (i: SaveRsvpSettingsInput) => asCoup
 export async function sendRsvpRemindersAction(): Promise<Result & { sent?: number }> {
   const me = await coupleOrError();
   if (me.error !== undefined) return { ok: false, error: me.error };
-  const r = await sendRsvpReminders(me.sb, me.userId, { send: sendRsvpReminder, siteUrl: siteUrl() });
+  const r = await sendRsvpReminders(me.sb, me.userId, { send: sendRsvpReminder, siteUrl: await requestSiteUrl() });
   if (!r.ok) return r;
   refresh();
   return { ok: true, sent: r.data.sent };
@@ -228,7 +228,7 @@ export const saveDesignAction = async (i: SaveDesignInput) => asCouple(saveDesig
 export async function sendInvitationsAction(i: SendInvitationsInput): Promise<Result & { sent?: number; failed?: number }> {
   const me = await coupleOrError();
   if (me.error !== undefined) return { ok: false, error: me.error };
-  const r = await sendInvitations(me.sb, me.userId, i, { sendBatch: sendEmailBatch, siteUrl: siteUrl() });
+  const r = await sendInvitations(me.sb, me.userId, i, { sendBatch: sendEmailBatch, siteUrl: await requestSiteUrl() });
   if (!r.ok) return r;
   refresh();
   return { ok: true, sent: r.data.sent, failed: r.data.failed };
