@@ -34,8 +34,14 @@ export default async function CoupleShell({ children }: { children: React.ReactN
   const have = new Set((owned ?? []).map((o) => o.addon_key as string));
   const links = [
     ...PLANNING,
-    ...ADDON_LINKS.map((l) => ({ href: l.href, label: l.label, section: "Wedding add-ons", locked: !have.has(l.key) })),
-    { href: "/client/dashboard/add-ons", label: "All add-ons", section: "Wedding add-ons" },
+    {
+      href: "/client/dashboard/add-ons",
+      label: "Add-ons",
+      children: [
+        ...ADDON_LINKS.map((l) => ({ href: l.href, label: l.label, locked: !have.has(l.key) })),
+        { href: "/client/dashboard/add-ons", label: "Shop add-ons" },
+      ],
+    },
   ];
   return (
     <DashboardShell
