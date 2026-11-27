@@ -24,7 +24,8 @@ export function DashboardShell({
         <DashboardNav links={links} />
         {footer && <div className="mt-4 lg:mt-auto">{footer}</div>}
       </aside>
-      <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">{children}</main>
+      {/* Left-aligned, 20px from the sidebar. */}
+      <main className="w-full max-w-4xl py-8 pr-4 pl-5 sm:pr-6">{children}</main>
       <HelpWidget role={help} />
     </div>
   );
