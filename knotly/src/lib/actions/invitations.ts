@@ -3,6 +3,7 @@ import { z } from "zod";
 import { chunk, defaultDesign, invitationEmail, MAX_PER_SEND, sendable, type Design, type Kind, type Recipient } from "@/lib/invitations";
 import { formatWeddingDate, sitePhotoUrl, type SitePhoto, type ThemeKey } from "@/lib/wedding-site";
 import type { OutgoingEmail } from "@/lib/email";
+import { siteUrl } from "@/lib/site";
 import { getProject } from "./wedding";
 import { fail, ok, parseInput, type Sb } from "./result";
 
@@ -69,7 +70,7 @@ export async function loadInvitations(sb: Sb, userId: string) {
     names: ((site?.title as string | null) || (c.project.partner_names as string | null) || "Our wedding") as string,
     date: formatWeddingDate(c.project.wedding_date as string | null),
     place: [c.project.venue, m ? `${m.name}, ${m.state}` : null].filter(Boolean).join(" · "),
-    photoUrl: photos[0] ? sitePhotoUrl(photos[0].path) : null,
+    photoUrl: photos[0] ? sitePhotoUrl(photos[0].path, siteUrl()) : null, // absolute: used in emails
     designs: { save_the_date: design("save_the_date"), invitation: design("invitation") },
     households,
     recipients: { save_the_date: recipients("save_the_date"), invitation: recipients("invitation") },

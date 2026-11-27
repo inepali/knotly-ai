@@ -1,6 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
+import { fakeStorage } from "@/lib/storage/fake";
 import { addSitePhoto, checkSlug, loadSiteEditor, moveSitePhoto, publishSite, saveSite, setSitePassword } from "./website";
 import { mockSb } from "./test-utils";
+
+vi.mock("@/lib/storage", () => import("@/lib/storage/fake"));
+beforeEach(() => fakeStorage.reset());
 
 const P = "123e4567-e89b-42d3-a456-426614174000";
 const project = { id: P, partner_names: "Priya & Sam", wedding_date: "2027-10-16", love_story: "We met" };
@@ -89,11 +93,9 @@ describe("photos", () => {
   it("stops at 10 and removes the uploaded file", async () => {
     const full = { ...site, photos: Array.from({ length: 10 }, (_, i) => photo(i)) };
     const { sb } = db({ site: full });
-    const removed: string[][] = [];
-    (sb as unknown as { storage: unknown }).storage = { from: () => ({ remove: async (p: string[]) => (removed.push(p), { error: null }) }) };
     const r = await addSitePhoto(sb, "u1", photo(11));
     expect(r).toEqual({ ok: false, error: "Your site can have up to 10 photos." });
-    expect(removed[0]).toEqual([photo(11).path]);
+    expect(fakeStorage.calls).toContain(`remove:sites/${photo(11).path}`);
   });
 
   it("moves a photo to the cover spot", async () => {

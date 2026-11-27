@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fakeStorage } from "@/lib/storage/fake";
 import { mockSb, UUID } from "./test-utils";
 import {
   addPortfolioImage,
@@ -7,19 +8,26 @@ import {
   deletePortfolioVideo,
   getPortfolio,
   reorderPortfolio,
+  requestPortfolioUpload,
   updatePortfolioImage,
 } from "./vendor-portfolio";
+
+vi.mock("@/lib/storage", () => import("@/lib/storage/fake"));
+beforeEach(() => fakeStorage.reset());
 
 const ME = UUID;
 const FILE = "9b2f0c1e-7d3a-4c55-9e1f-2a3b4c5d6e7f";
 const OTHER = "223e4567-e89b-42d3-a456-426614174000";
 const photo = { storagePath: `${ME}/${FILE}.webp`, thumbPath: `${ME}/${FILE}-thumb.webp`, width: 2400, height: 1600 };
 
-/** mockSb plus a storage stand-in that records removals. */
+/** mockSb plus the paths removed from storage (one entry per remove call). */
 function withStorage(m: ReturnType<typeof mockSb>) {
-  const removed: string[][] = [];
-  Object.assign(m.sb, { storage: { from: () => ({ remove: async (paths: string[]) => (removed.push(paths), { error: null }) }) } });
-  return { ...m, removed };
+  return {
+    ...m,
+    get removed() {
+      return fakeStorage.calls.filter((c) => c.startsWith("remove:portfolio/")).map((c) => c.slice("remove:portfolio/".length).split(","));
+    },
+  };
 }
 
 describe("addPortfolioImage", () => {
@@ -48,6 +56,35 @@ describe("addPortfolioImage", () => {
     const m = withStorage(mockSb({ vendor_portfolio_images: [{ data: null }, { error: { message: "portfolio_limit:25" } }] }));
     const r = await addPortfolioImage(m.sb, ME, photo);
     expect(r).toEqual({ ok: false, error: "You can add up to 25 photos." });
+    expect(m.removed).toEqual([[photo.storagePath, photo.thumbPath]]);
+  });
+});
+
+describe("uploads", () => {
+  const spec = { full: { contentType: "image/webp", bytes: 500_000 }, thumb: { contentType: "image/webp", bytes: 40_000 } };
+
+  it("hands out two tickets in the vendor's own folder", async () => {
+    const m = mockSb({ vendor_portfolio_images: { data: null, count: 3 } });
+    const r = await requestPortfolioUpload(m.sb, ME, spec);
+    if (!r.ok) throw new Error(r.error);
+    expect(r.data.storagePath).toMatch(new RegExp(`^${ME}/[0-9a-f-]{36}\\.webp$`));
+    expect(r.data.thumbPath).toBe(r.data.storagePath.replace(".webp", "-thumb.webp"));
+    expect(fakeStorage.calls).toEqual([`ticket:portfolio/${r.data.storagePath}`, `ticket:portfolio/${r.data.thumbPath}`]);
+  });
+
+  it("refuses when the portfolio is full, too big, or the wrong type", async () => {
+    expect((await requestPortfolioUpload(mockSb({ vendor_portfolio_images: { data: null, count: 25 } }).sb, ME, spec)).ok).toBe(false);
+    expect((await requestPortfolioUpload(mockSb().sb, ME, { ...spec, full: { contentType: "image/webp", bytes: 9_000_000 } })).ok).toBe(false);
+    expect((await requestPortfolioUpload(mockSb().sb, ME, { ...spec, full: { contentType: "image/gif", bytes: 10 } })).ok).toBe(false);
+    expect(fakeStorage.calls).toEqual([]);
+  });
+
+  it("won't record a photo whose file never arrived, and cleans up", async () => {
+    fakeStorage.missing.add(photo.thumbPath);
+    const m = withStorage(mockSb());
+    const r = await addPortfolioImage(m.sb, ME, photo);
+    expect(r.ok).toBe(false);
+    expect(m.calls).toEqual([]);
     expect(m.removed).toEqual([[photo.storagePath, photo.thumbPath]]);
   });
 });

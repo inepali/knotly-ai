@@ -1,6 +1,8 @@
 // src/lib/wedding-site.ts — the Wedding Website: themes, slugs and page sections (no database here).
 
-export const SITE_BUCKET = "wedding-sites";
+import { mediaUrl } from "./storage/areas";
+
+export const SITE_BUCKET = "wedding-sites"; // Supabase bucket name (see lib/storage/areas)
 export const MAX_SITE_PHOTOS = 10;
 
 export const THEMES = {
@@ -136,8 +138,9 @@ export function visibleSections(
 
 export type SitePhoto = { path: string; width: number; height: number; caption?: string };
 
-export function sitePhotoUrl(path: string, supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "") {
-  return `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/${SITE_BUCKET}/${path.split("/").map(encodeURIComponent).join("/")}`;
+/** Address of a website photo (/media/sites/{path}); pass `base` (siteUrl()) for an absolute URL. */
+export function sitePhotoUrl(path: string, base = "") {
+  return mediaUrl("sites", path, base);
 }
 
 /** A path inside this wedding's folder, like {projectId}/{uuid}.webp. */

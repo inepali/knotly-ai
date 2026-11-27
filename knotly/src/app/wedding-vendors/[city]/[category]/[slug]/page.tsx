@@ -58,7 +58,8 @@ const getVendor = cache(async (slug: string) => {
 
 // The vendor's photos and videos, shared by the metadata (cover as the share image) and the page.
 const getGallery = cache(async (v: { id: string; business_name: string; category: string }, place: string) =>
-  toGallery(await getPortfolio(supabaseAdmin, v.id), { business: v.business_name, kind: categoryLabel(v.category), place })
+  // Absolute URLs: they go into Open Graph tags and JSON-LD.
+  toGallery(await getPortfolio(supabaseAdmin, v.id), { business: v.business_name, kind: categoryLabel(v.category), place }, siteUrl())
 );
 
 function copy(v: NonNullable<Awaited<ReturnType<typeof getVendor>>>) {

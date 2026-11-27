@@ -1,12 +1,13 @@
 // src/lib/photo-share-data.ts — guest photos with short-lived signed links. The db client is the
 // couple's (RLS) on the dashboard, or the service role for the public gallery (approved only).
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { PHOTO_BUCKET, SIGNED_URL_SECONDS, type GuestPhoto } from "./photo-share";
+import { signedUrls } from "@/lib/storage";
+import { SIGNED_URL_SECONDS, type GuestPhoto } from "./photo-share";
 
-export async function withSignedUrls(db: SupabaseClient, photos: GuestPhoto[]): Promise<GuestPhoto[]> {
+/** Links for photos the caller already loaded through `db` (so RLS has decided who sees what). */
+export async function withSignedUrls(_db: SupabaseClient, photos: GuestPhoto[]): Promise<GuestPhoto[]> {
   if (!photos.length) return photos;
-  const { data } = await db.storage.from(PHOTO_BUCKET).createSignedUrls(photos.map((p) => p.path), SIGNED_URL_SECONDS);
-  const byPath = new Map((data ?? []).map((d) => [d.path, d.signedUrl]));
+  const byPath = await signedUrls("guest-photos", photos.map((p) => p.path), SIGNED_URL_SECONDS);
   return photos.map((p) => ({ ...p, url: byPath.get(p.path) ?? undefined }));
 }
 

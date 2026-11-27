@@ -4,7 +4,8 @@ import { after } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { fail } from "@/lib/auth";
-import { KNOWLEDGE_BUCKET, ingestKnowledge } from "@/lib/knowledge";
+import { ingestKnowledge } from "@/lib/knowledge";
+import { removeObjects, verifyUpload } from "@/lib/storage";
 
 export const maxDuration = 60;
 
@@ -20,6 +21,10 @@ export async function POST(_req: NextRequest, ctx: RouteContext<"/api/knowledge/
   const { id } = await ctx.params;
   const { src } = await ownSource(id);
   if (!src) return fail("Not found.", 404);
+  if (src.kind === "pdf" && src.file_path) {
+    const bad = await verifyUpload("knowledge", src.file_path);
+    if (bad) return fail(bad, 400);
+  }
   await supabaseAdmin
     .from("vendor_knowledge")
     .update({ status: "pending", error: null, updated_at: new Date().toISOString() })
@@ -34,6 +39,6 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext<"/api/knowledg
   if (!src) return fail("Not found.", 404);
   const { error } = await sb.from("vendor_knowledge").delete().eq("id", id); // chunks cascade
   if (error) return fail(error.message, 500);
-  if (src.file_path) await supabaseAdmin.storage.from(KNOWLEDGE_BUCKET).remove([src.file_path]);
+  if (src.file_path) await removeObjects("knowledge", [src.file_path]);
   return Response.json({ ok: true });
 }

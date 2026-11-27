@@ -6,11 +6,11 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { panelClasses } from "@/components/ui/fields";
 import { useAction } from "@/components/dashboard/useAction";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { uploadWithTicket } from "@/lib/storage/client";
 import { encodeImage } from "@/lib/image-encode";
 import { ACCEPTED_TYPES, MAX_UPLOAD_BYTES } from "@/lib/portfolio";
-import { MAX_SITE_PHOTOS, SITE_BUCKET, sitePhotoUrl, type SitePhoto } from "@/lib/wedding-site";
-import { addSitePhotoAction, moveSitePhotoAction, removeSitePhotoAction } from "@/app/client/dashboard/actions";
+import { MAX_SITE_PHOTOS, sitePhotoUrl, type SitePhoto } from "@/lib/wedding-site";
+import { addSitePhotoAction, moveSitePhotoAction, removeSitePhotoAction, requestSitePhotoUploadAction } from "@/app/client/dashboard/actions";
 
 const EDGE = 2400;
 
@@ -35,9 +35,11 @@ export default function SitePhotos({ projectId, photos }: { projectId: string; p
       }
       try {
         const img = await encodeImage(f, EDGE);
-        const path = `${projectId}/${crypto.randomUUID()}.${img.ext}`;
-        const { error } = await supabaseBrowser().storage.from(SITE_BUCKET).upload(path, img.blob, { contentType: img.blob.type, cacheControl: "31536000" });
-        if (error) throw new Error(error.message);
+        const t = await requestSitePhotoUploadAction({ contentType: img.blob.type as "image/webp" | "image/jpeg", bytes: img.blob.size });
+        if (!t.ok) throw new Error(t.error);
+        const { path, ticket } = t.data;
+        const upErr = await uploadWithTicket(ticket, img.blob);
+        if (upErr) throw new Error(upErr);
         const r = await addSitePhotoAction({ path, width: img.width, height: img.height });
         if (!r.ok) throw new Error(r.error);
         done++;

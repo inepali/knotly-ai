@@ -7,9 +7,10 @@ import { supabaseAdmin as db } from "@/lib/supabase/admin";
 import { chatModel } from "@/agent/models";
 import { embedText } from "@/lib/embeddings";
 import { PDF_UPLOADS_ENABLED } from "@/lib/flags";
+import { getObject } from "@/lib/storage";
 import { discoverPages, meta, readPage } from "@/lib/crawl";
 
-export const KNOWLEDGE_BUCKET = "vendor-knowledge";
+export const KNOWLEDGE_BUCKET = "vendor-knowledge"; // Supabase bucket name (see lib/storage/areas)
 export type KnowledgeKind = "website" | "instagram" | "facebook" | "youtube" | "link" | "faq" | "pdf";
 
 const MAX_CHARS = 60_000; // per source; keeps cost and prompt size sane
@@ -163,8 +164,9 @@ async function crawlWebsite(src: Src, start: URL) {
 // PDFs: Claude reads the file and returns its text.
 
 async function readPdf(path: string) {
-  const { data, error } = await db.storage.from(KNOWLEDGE_BUCKET).download(path);
-  if (error || !data) throw new Error("Couldn't open the uploaded file.");
+  const data = await getObject("knowledge", path).catch(() => {
+    throw new Error("Couldn't open the uploaded file.");
+  });
   const { text } = await generateText({
     model: chatModel,
     maxOutputTokens: 16_000,
@@ -172,7 +174,7 @@ async function readPdf(path: string) {
       {
         role: "user",
         content: [
-          { type: "file", data: new Uint8Array(await data.arrayBuffer()), mediaType: "application/pdf" },
+          { type: "file", data: new Uint8Array(data), mediaType: "application/pdf" },
           {
             type: "text",
             text: "Extract the text of this document so it can be searched. Keep every fact: prices, packages, policies, dates, contact details, FAQs. Write tables as plain lines. Output only the document's content.",

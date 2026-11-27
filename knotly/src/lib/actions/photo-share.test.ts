@@ -1,6 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
+import { fakeStorage } from "@/lib/storage/fake";
 import { deletePhotos, moderatePhotos, setPhotoSettings } from "./photo-share";
 import { mockSb, UUID } from "./test-utils";
+
+vi.mock("@/lib/storage", () => import("@/lib/storage/fake"));
+beforeEach(() => fakeStorage.reset());
 
 describe("photo moderation", () => {
   it("updates status for the selected photos", async () => {
@@ -15,10 +19,8 @@ describe("photo moderation", () => {
 
   it("deletes rows and their files", async () => {
     const { sb } = mockSb({ guest_photos: { data: [{ path: "p/x.webp" }] } });
-    const removed: string[][] = [];
-    (sb as unknown as { storage: unknown }).storage = { from: () => ({ remove: async (p: string[]) => { removed.push(p); return { error: null }; } }) };
     expect(await deletePhotos(sb, "u1", { ids: [UUID] })).toEqual({ ok: true, data: { removed: 1 } });
-    expect(removed).toEqual([["p/x.webp"]]);
+    expect(fakeStorage.calls).toEqual(["remove:guest-photos/p/x.webp"]);
   });
 
   it("explains a locked add-on when saving settings", async () => {

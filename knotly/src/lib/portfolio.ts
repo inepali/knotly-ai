@@ -2,18 +2,22 @@
 // Pure and safe to import in the browser. Keep the limits in sync with the
 // vendor_portfolio migration's trigger. See docs/specs/vendor-portfolio-spec.md.
 
+import { mediaUrl } from "./storage/areas";
+
 export const MAX_IMAGES = 25;
 export const MAX_VIDEOS = 3;
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // what we accept before shrinking in the browser
 export const FULL_EDGE = 2400; // long edge of the stored photo
 export const THUMB_EDGE = 600; // long edge of the grid/card thumbnail
-export const PORTFOLIO_BUCKET = "vendor-portfolio";
+export const PORTFOLIO_BUCKET = "vendor-portfolio"; // Supabase bucket name (see lib/storage/areas)
 export const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
 
-/** Public CDN address of a file in the portfolio bucket. */
-export function portfolioUrl(path: string, supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "") {
-  const encoded = path.split("/").map(encodeURIComponent).join("/");
-  return `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/${PORTFOLIO_BUCKET}/${encoded}`;
+/**
+ * Address of a portfolio photo: /media/portfolio/{path}, which redirects to wherever the file is
+ * stored (R2 or Supabase). Pass `base` (siteUrl()) when it must be absolute, e.g. JSON-LD.
+ */
+export function portfolioUrl(path: string, base = "") {
+  return mediaUrl("portfolio", path, base);
 }
 
 /** A file this vendor may point a row at: {vendorId}/{uuid}.webp|jpg or the matching -thumb. */
@@ -84,12 +88,12 @@ type VideoRow = { id: string; provider: "youtube" | "vimeo"; video_id: string; t
 export function toGallery(
   p: { images: ImageRow[]; videos: VideoRow[] },
   o: { business: string; kind: string; place?: string | null },
-  supabaseUrl?: string
+  base?: string
 ) {
   return {
     photos: p.images.map((img, i) => ({
-      full: portfolioUrl(img.storage_path, supabaseUrl),
-      thumb: portfolioUrl(img.thumb_path, supabaseUrl),
+      full: portfolioUrl(img.storage_path, base),
+      thumb: portfolioUrl(img.thumb_path, base),
       alt: photoAlt(img.caption, { ...o, n: i + 1 }),
       caption: img.caption,
       width: img.width,

@@ -3,10 +3,10 @@
 "use client";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { uploadWithTicket } from "@/lib/storage/client";
 import { encodeImage } from "@/lib/image-encode";
 import { ACCEPTED_TYPES, MAX_UPLOAD_BYTES } from "@/lib/portfolio";
-import { MAX_PER_BATCH, PHOTO_BUCKET, PHOTO_EDGE } from "@/lib/photo-share";
+import { MAX_PER_BATCH, PHOTO_EDGE } from "@/lib/photo-share";
 import { recordPhotoAction, startPhotoUploadsAction } from "@/app/w/[slug]/photos/actions";
 
 export default function PhotoUploader({ slug }: { slug: string }) {
@@ -25,21 +25,34 @@ export default function PhotoUploader({ slug }: { slug: string }) {
       setStatus("Those files can't be shared. Use photos (JPG, PNG, HEIC) under 10 MB.");
       return setBusy(false);
     }
-    const start = await startPhotoUploadsAction(slug, files.length);
+    let failed = 0;
+    // Shrink first: each upload ticket is signed for the exact type and size of its file.
+    setStatus("Preparing photos…");
+    const images: Awaited<ReturnType<typeof encodeImage>>[] = [];
+    for (const f of files) {
+      try {
+        images.push(await encodeImage(f, PHOTO_EDGE));
+      } catch {
+        failed++;
+      }
+    }
+    if (!images.length) {
+      setStatus("Those photos couldn't be read. Try saving them as JPG first.");
+      return setBusy(false);
+    }
+    const start = await startPhotoUploadsAction(slug, images.map((img) => ({ contentType: img.blob.type, bytes: img.blob.size })));
     if (!start.ok) {
       setStatus(start.error);
       return setBusy(false);
     }
     let done = 0;
     let pending = false;
-    let failed = 0;
-    for (const [i, f] of files.entries()) {
-      setStatus(`Sending ${i + 1} of ${files.length}…`);
+    for (const [i, img] of images.entries()) {
+      setStatus(`Sending ${i + 1} of ${images.length}…`);
       try {
-        const img = await encodeImage(f, PHOTO_EDGE);
         const u = start.uploads[i];
-        const { error } = await supabaseBrowser().storage.from(PHOTO_BUCKET).uploadToSignedUrl(u.path, u.token, img.blob, { contentType: img.blob.type });
-        if (error) throw error;
+        const upErr = await uploadWithTicket(u.ticket, img.blob);
+        if (upErr) throw new Error(upErr);
         const r = await recordPhotoAction(slug, { path: u.path, width: img.width, height: img.height, name, website: honey });
         if (!r.ok) throw new Error(r.error);
         pending ||= r.pending;

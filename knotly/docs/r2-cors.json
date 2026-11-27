@@ -1,0 +1,9 @@
+[
+  {
+    "AllowedOrigins": ["https://knotly.net", "https://www.knotly.net", "https://*.vercel.app", "http://localhost:3000"],
+    "AllowedMethods": ["PUT", "GET", "HEAD"],
+    "AllowedHeaders": ["Content-Type", "Cache-Control"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
