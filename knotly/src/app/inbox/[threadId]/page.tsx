@@ -5,6 +5,8 @@ import { getViewer, isMine, loadMailbox, loadThread } from "@/lib/mailbox";
 import MailShell from "@/components/inbox/MailShell";
 import { mailCounts } from "@/lib/mail-threads";
 import { DraftReview, MarkRead, ReplyBox } from "@/components/inbox/ThreadActions";
+import EstimateCard from "@/components/inbox/EstimateCard";
+import { loadThreadEstimates } from "@/lib/estimates";
 
 const AGENT = new Set(["couple_agent", "vendor_agent"]);
 
@@ -15,10 +17,15 @@ export default async function ThreadPage(props: PageProps<"/inbox/[threadId]">) 
   const viewer = await getViewer(sb);
   if (!viewer) redirect("/signin");
 
-  const [messages, all] = await Promise.all([
+  const [messages, all, estimates] = await Promise.all([
     loadThread(sb, viewer.side, threadId),
     loadMailbox(sb, viewer.side),
+    loadThreadEstimates(sb, viewer.side, threadId),
   ]);
+  const estimateById = new Map(estimates.map((e) => [e.id, e]));
+  // Estimates not attached to any message still get shown, after the conversation.
+  const attached = new Set(messages.map((m) => m.quoteId).filter(Boolean));
+  const loose = estimates.filter((e) => !attached.has(e.id));
   if (messages.length === 0) notFound(); // not theirs, or nothing visible yet
 
   const counterpart = messages[0].counterpart;
@@ -71,10 +78,16 @@ export default async function ThreadPage(props: PageProps<"/inbox/[threadId]">) 
               </div>
               {m.subject && <p className="mb-1 font-medium">{m.subject}</p>}
               <p className="whitespace-pre-wrap text-sm">{m.body}</p>
+              {!draft && m.quoteId && estimateById.has(m.quoteId) && (
+                <EstimateCard estimate={estimateById.get(m.quoteId)!} side={viewer.side} />
+              )}
             </li>
           );
         })}
       </ol>
+      {loose.map((e) => (
+        <EstimateCard key={e.id} estimate={e} side={viewer.side} />
+      ))}
 
       {messages.some((m) => m.status === "sent") && (
         <div className="mt-6">
