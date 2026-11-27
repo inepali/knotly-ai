@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { betterBundle, buildCart, type Cart, type CatalogItem } from "@/lib/addons";
 import { getProject } from "./wedding";
+import { devUnlockAll } from "@/lib/dev-addons";
 import { fail, ok, parseInput, type Sb } from "./result";
 
 export type OwnedAddon = { addon_key: string; active_until: string; source: string };
@@ -26,9 +27,9 @@ const activeKeys = (owned: OwnedAddon[], now = Date.now()) =>
 export async function listAddons(sb: Sb, userId: string) {
   const project = await getProject(sb, userId);
   const catalog = await loadCatalog(sb);
-  if (!project) return ok({ projectId: null, catalog, owned: [] as OwnedAddon[], active: [] as string[] });
+  if (!project) return ok({ projectId: null, catalog, owned: [] as OwnedAddon[], active: [] as string[], devUnlocked: devUnlockAll() });
   const owned = await loadOwned(sb, project.id);
-  return ok({ projectId: project.id as string, catalog, owned, active: activeKeys(owned) });
+  return ok({ projectId: project.id as string, catalog, owned, active: activeKeys(owned), devUnlocked: devUnlockAll() });
 }
 
 export const QuoteAddonsInput = z.object({ keys: z.array(z.string().min(1).max(40)).min(1).max(10) });

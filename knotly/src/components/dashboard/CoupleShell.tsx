@@ -5,6 +5,9 @@ import AccountBlock from "@/components/dashboard/AccountBlock";
 import { removeAvatarAction, signOutAction, uploadAvatarAction } from "@/app/client/dashboard/actions";
 import { avatarUrl } from "@/lib/actions/avatar";
 import { requireCouple } from "@/lib/couple-session";
+import { getProject } from "@/lib/actions/wedding";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { devUnlockAll, ensureDevAddons } from "@/lib/dev-addons";
 
 const PLANNING = [
   { href: "/client/dashboard/my-wedding", label: "My Wedding" },
@@ -29,6 +32,11 @@ export default async function CoupleShell({ children }: { children: React.ReactN
   // Older databases may not have the avatar column yet; fall back to no photo rather than failing.
   const { data: profile } = await sb.from("profiles").select("full_name, email, avatar_path").eq("id", userId).maybeSingle();
   const photo = await avatarUrl(sb, profile?.avatar_path);
+  // Dev/testing: DEV_UNLOCK_ALL_ADDONS=true grants every add-on (never on Vercel Production).
+  if (devUnlockAll()) {
+    const project = await getProject(sb, userId);
+    if (project) await ensureDevAddons(supabaseAdmin, project.id);
+  }
   // Which add-ons this wedding has (RLS: their own). Expired ones stay readable, so they aren't locked.
   const { data: owned } = await sb.from("couple_addons").select("addon_key");
   const have = new Set((owned ?? []).map((o) => o.addon_key as string));

@@ -21,3 +21,14 @@ Couples pay once per wedding for add-ons (see `client-add-ons-spec.md`). Set in 
 - Turn on Stripe Tax and add your NC/SC registrations in the Stripe dashboard. Checkout uses `automatic_tax`.
 
 Prices live in the `addon_catalog` table, so you can change them without a deploy.
+
+### Testing add-ons without Stripe
+
+Set `DEV_UNLOCK_ALL_ADDONS=true` in `.env.local` (or for Vercel **Preview** only). Any wedding that
+opens the couple dashboard gets every paid add-on, so you can build and test them. Checkout still works.
+
+- It is ignored on Vercel **Production** (`VERCEL_ENV=production`), even if set.
+- It works by adding real `couple_addons` rows (`source = 'admin'`, 5 years), because the database
+  rules check them too. Real purchases are never overwritten.
+- Turning it off doesn't remove those rows. To lock a dev database again:
+  `delete from couple_addons where source = 'admin';`
