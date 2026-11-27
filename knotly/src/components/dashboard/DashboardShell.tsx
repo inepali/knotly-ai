@@ -8,11 +8,14 @@ export function DashboardShell({
   links,
   help,
   footer,
+  align = "center",
   children,
 }: {
   links: NavLink[];
   help: "couple" | "vendor";
   footer?: React.ReactNode; // pinned to the bottom of the sidebar
+  /** "left": the page sits against the sidebar with 20px of space, instead of centered. */
+  align?: "center" | "left";
   children: React.ReactNode;
 }) {
   return (
@@ -24,7 +27,7 @@ export function DashboardShell({
         <DashboardNav links={links} />
         {footer && <div className="mt-4 lg:mt-auto">{footer}</div>}
       </aside>
-      <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">{children}</main>
+      <main className={align === "left" ? "w-full max-w-4xl py-8 pr-4 pl-5 sm:pr-6" : "mx-auto w-full max-w-4xl px-4 py-8 sm:px-6"}>{children}</main>
       <HelpWidget role={help} />
     </div>
   );
