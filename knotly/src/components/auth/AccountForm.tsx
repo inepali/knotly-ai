@@ -6,18 +6,18 @@ import { fieldClasses } from "@/components/ui/fields";
 
 // signup → code: create an account.  signin: password sign-in.
 // forgot → reset: email/phone a code, then set a new password (which also signs in).
-type Mode = "signup" | "code" | "signin" | "forgot" | "reset" | "done";
+type Mode = "signup" | "code" | "signin" | "forgot" | "reset";
 type Method = "email" | "phone";
 export type Role = "couple" | "vendor" | "admin";
 
-const TITLES: Record<Exclude<Mode, "done">, string> = {
+const TITLES: Record<Mode, string> = {
   signup: "Create your Knotly account",
   code: "Check your messages",
   signin: "Sign in to Knotly",
   forgot: "Reset your password",
   reset: "Choose a new password",
 };
-const SUBMIT: Record<Exclude<Mode, "done">, string> = {
+const SUBMIT: Record<Mode, string> = {
   signup: "Create account",
   code: "Verify and finish",
   signin: "Sign in",
@@ -47,6 +47,8 @@ export default function AccountForm({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  // Signed in: the form stays put (disabled) while the dashboard opens, with no extra screen.
+  const [leaving, setLeaving] = useState(false);
 
   async function post(url: string, body: object) {
     setError("");
@@ -75,7 +77,7 @@ export default function AccountForm({
   }
 
   function finish(signedInAs: Role) {
-    setMode("done");
+    setLeaving(true);
     onDone(signedInAs);
   }
 
@@ -108,9 +110,6 @@ export default function AccountForm({
       if (r.ok) finish(r.role ?? "couple");
     }
   }
-
-  if (mode === "done")
-    return <p className="text-sm text-emerald-700">✓ You&apos;re signed in</p>;
 
   const field = fieldClasses;
   const tab = (m: Method) =>
@@ -237,10 +236,10 @@ export default function AccountForm({
       )}
 
       <button
-        disabled={busy}
+        disabled={busy || leaving}
         className="w-full rounded-lg bg-cyan-500 font-semibold hover:bg-cyan-600 px-3 py-2 text-white disabled:opacity-50"
       >
-        {busy ? "Please wait…" : SUBMIT[mode]}
+        {leaving ? "Signing in…" : busy ? "Please wait…" : SUBMIT[mode]}
       </button>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
