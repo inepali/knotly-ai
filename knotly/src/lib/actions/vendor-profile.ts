@@ -44,20 +44,6 @@ export const SaveAddOnsInput = z.object({
 });
 export type SaveAddOnsInput = z.input<typeof SaveAddOnsInput>;
 
-export const AddTestimonialsInput = z.object({
-  reviews: z
-    .array(
-      z.object({
-        authorName: z.string(),
-        rating: z.number().int().min(1).max(5).optional(),
-        body: z.string().min(20).max(2000),
-      })
-    )
-    .min(1)
-    .max(20),
-});
-export type AddTestimonialsInput = z.input<typeof AddTestimonialsInput>;
-
 export const PublishProfileInput = z.object({ publish: z.boolean() });
 export type PublishProfileInput = z.input<typeof PublishProfileInput>;
 
@@ -152,28 +138,6 @@ export async function saveAddOns(sb: Sb, userId: string, input: unknown) {
   if (error) return fail(error.message);
   reembed(userId);
   return ok({ saved: data });
-}
-
-export async function addTestimonials(sb: Sb, userId: string, input: unknown) {
-  const p = parseInput(AddTestimonialsInput, input);
-  if (!p.ok) return p;
-  const { reviews } = p.data;
-
-  const { data, error } = await sb
-    .from("testimonials")
-    .insert(
-      reviews.map((r) => ({
-        vendor_id: userId,
-        author_name: r.authorName,
-        rating: r.rating ?? null,
-        body: r.body,
-        verified: false,
-      }))
-    )
-    .select("id, author_name");
-  if (error) return fail(error.message);
-  reembed(userId);
-  return ok({ saved: data, note: "Shown as \"Added by vendor\". To get verified reviews, ask clients from the Business page." });
 }
 
 export async function publishProfile(sb: Sb, userId: string, input: unknown, ctx: ActionCtx = {}) {

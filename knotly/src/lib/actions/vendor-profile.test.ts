@@ -3,7 +3,6 @@ vi.mock("next/server", () => ({ after: vi.fn() }));
 vi.mock("@/lib/embeddings", () => ({ refreshVendorEmbedding: vi.fn(), embedText: vi.fn() }));
 import { after } from "next/server";
 import {
-  addTestimonials,
   getMyBusiness,
   publishProfile,
   saveAddOns,
@@ -100,23 +99,6 @@ describe("saveAddOns", () => {
     expect((await saveAddOns(good.sb, "v1", { addOns: [{ name: "Hour", price: 0 }] })).ok).toBe(true);
     const bad = mockSb({ vendors: { data: { id: "v1" } }, vendor_addons: { error: { message: "no" } } });
     expect(await saveAddOns(bad.sb, "v1", { addOns: [{ name: "Hour", price: 0 }] })).toEqual({ ok: false, error: "no" });
-  });
-});
-
-describe("addTestimonials", () => {
-  it("rejects reviews that are too short or have a bad rating", async () => {
-    const { sb } = mockSb();
-    expect((await addTestimonials(sb, "v1", { reviews: [{ authorName: "A", body: "short" }] })).ok).toBe(false);
-    const body = "A wonderful experience from start to finish.";
-    expect((await addTestimonials(sb, "v1", { reviews: [{ authorName: "A", body, rating: 6 }] })).ok).toBe(false);
-  });
-
-  it("saves reviews as unverified", async () => {
-    const { sb, called } = mockSb({ testimonials: { data: [{ id: "t1" }] } });
-    const body = "A wonderful experience from start to finish.";
-    const r = await addTestimonials(sb, "v1", { reviews: [{ authorName: "A", body }] });
-    expect(r.ok).toBe(true);
-    expect(called("testimonials", "insert")[0].args[0]).toMatchObject([{ verified: false, rating: null }]);
   });
 });
 

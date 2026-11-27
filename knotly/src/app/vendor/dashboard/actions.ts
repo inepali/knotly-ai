@@ -12,7 +12,6 @@ import { requestSiteUrl } from "@/lib/site";
 import { cancelReviewRequest, sendReviewRequest } from "@/lib/actions/review-requests";
 import type { CancelReviewRequestInput, SendReviewRequestInput } from "@/lib/review-requests";
 import {
-  addTestimonials,
   deleteAddOn,
   deletePackage,
   deleteTestimonial,
@@ -22,7 +21,6 @@ import {
   savePackages,
   updateAddOn,
   updatePackage,
-  type AddTestimonialsInput,
   type DeleteItemInput,
   type PublishProfileInput,
   type SaveAddOnsInput,
@@ -91,7 +89,6 @@ export const cancelReviewRequestAction = async (i: CancelReviewRequestInput) => 
 
 export const saveBusinessAction = async (i: SaveBusinessProfileInput) => run((sb, u) => saveBusinessProfile(sb, u, i));
 export const publishAction = async (i: PublishProfileInput) => run((sb, u) => publishProfile(sb, u, i));
-export const addReviewsAction = async (i: AddTestimonialsInput) => run((sb, u) => addTestimonials(sb, u, i));
 export const deleteReviewAction = async (i: DeleteItemInput) => run((sb, u) => deleteTestimonial(sb, u, i));
 
 export const addPackagesAction = async (i: SavePackagesInput) => run((sb, u) => savePackages(sb, u, i));
