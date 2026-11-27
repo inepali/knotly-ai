@@ -16,6 +16,11 @@ export async function uploadWithTicket(ticket: UploadTicket, file: Blob): Promis
       .uploadToSignedUrl(ticket.path, ticket.token, file, { contentType: ticket.contentType });
     return error ? error.message : null;
   } catch {
-    return "Upload failed. Check your connection and try again.";
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return "You're offline. Reconnect and try again.";
+    // fetch only throws like this when the browser blocks the request, almost always the
+    // bucket's CORS rules not allowing this site's address (see scripts/storage-check.mts).
+    const where = typeof location !== "undefined" ? location.origin : "this site";
+    console.error(`[storage] upload blocked: the storage bucket may not allow uploads from ${where} (CORS).`);
+    return "Upload was blocked by the storage server. Please try again, or contact support if it keeps happening.";
   }
 }
