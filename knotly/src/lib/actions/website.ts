@@ -1,9 +1,10 @@
 // src/lib/actions/website.ts — the couple's Wedding Website (add-on): content, address, theme,
 // photos, password and publishing. RLS also requires the active add-on for every write.
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
+import { removeObjects, uploadProblem, uploadTicket, verifyUpload } from "@/lib/storage";
 import {
   MAX_SITE_PHOTOS,
-  SITE_BUCKET,
   THEMES,
   isOwnSitePath,
   normalizeSections,
@@ -207,14 +208,34 @@ async function writePhotos(sb: Sb, projectId: string, photos: SitePhoto[]) {
   return error ? fail(error.message) : ok({ photos });
 }
 
+export const SiteUploadInput = z.object({ contentType: z.enum(["image/webp", "image/jpeg"]), bytes: z.number().int().positive() });
+export type SiteUploadInput = z.input<typeof SiteUploadInput>;
+
+/** A one-time upload ticket for one website photo, if the site has room. */
+export async function requestSitePhotoUpload(sb: Sb, userId: string, input: unknown) {
+  const p = parseInput(SiteUploadInput, input);
+  if (!p.ok) return p;
+  const problem = uploadProblem("sites", p.data.contentType, p.data.bytes);
+  if (problem) return fail(problem);
+  const c = await context(sb, userId);
+  if ("error" in c) return fail(c.error!);
+  if (!c.active) return fail(LOCKED);
+  if (!c.site) return fail("Save your site first.");
+  if (c.site.photos.length >= MAX_SITE_PHOTOS) return fail(`Your site can have up to ${MAX_SITE_PHOTOS} photos.`);
+  const path = `${c.project.id}/${randomUUID()}.${p.data.contentType === "image/jpeg" ? "jpg" : "webp"}`;
+  return ok({ path, ticket: await uploadTicket("sites", path, p.data) });
+}
+
 /** Record a photo the browser already uploaded to {projectId}/{uuid}.webp. */
 export async function addSitePhoto(sb: Sb, userId: string, input: unknown) {
   const p = parseInput(SitePhotoInput, input);
   if (!p.ok) return p;
   const c = await context(sb, userId);
   if ("error" in c) return fail(c.error!);
-  const cleanup = () => sb.storage.from(SITE_BUCKET).remove([p.data.path]);
+  const cleanup = () => removeObjects("sites", [p.data.path]);
   if (!isOwnSitePath(c.project.id, p.data.path)) return fail("That photo isn't in your wedding's folder.");
+  const bad = await verifyUpload("sites", p.data.path);
+  if (bad) return fail(bad);
   const refusal = !c.active
     ? LOCKED
     : !c.site
@@ -237,7 +258,7 @@ export async function removeSitePhoto(sb: Sb, userId: string, input: unknown) {
   if (!c.active) return fail(LOCKED);
   if (!c.site?.photos.some((x) => x.path === p.data.path)) return fail("Photo not found.");
   const r = await writePhotos(sb, c.project.id, c.site.photos.filter((x) => x.path !== p.data.path));
-  if (r.ok) await sb.storage.from(SITE_BUCKET).remove([p.data.path]);
+  if (r.ok) await removeObjects("sites", [p.data.path]);
   return r;
 }
 

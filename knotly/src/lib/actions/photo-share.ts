@@ -1,6 +1,7 @@
 // src/lib/actions/photo-share.ts — the couple's side of Guest Photo Sharing (add-on).
 import { z } from "zod";
-import { PHOTO_BUCKET, photosExpireAt } from "@/lib/photo-share";
+import { photosExpireAt } from "@/lib/photo-share";
+import { removeObjects } from "@/lib/storage";
 import { loadPhotoSettings, loadPhotos, withSignedUrls } from "@/lib/photo-share-data";
 import { getProject } from "./wedding";
 import { fail, ok, parseInput, type Sb } from "./result";
@@ -59,6 +60,6 @@ export async function deletePhotos(sb: Sb, userId: string, input: unknown) {
   const { data, error } = await sb.from("guest_photos").delete().in("id", p.data.ids).select("path");
   if (error) return fail(error.message);
   const paths = (data ?? []).map((d) => d.path as string);
-  if (paths.length) await sb.storage.from(PHOTO_BUCKET).remove(paths);
+  if (paths.length) await removeObjects("guest-photos", paths);
   return ok({ removed: paths.length });
 }

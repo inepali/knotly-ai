@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fakeStorage } from "@/lib/storage/fake";
 import { removeAvatar, saveAvatar } from "./avatar";
+
+vi.mock("@/lib/storage", () => import("@/lib/storage/fake"));
+beforeEach(() => fakeStorage.reset());
 
 // A small stand-in for the Supabase client that records what happened, in order.
 function fakeSb({ oldPath = null as string | null, updateError = null as { message: string } | null } = {}) {
@@ -14,20 +18,9 @@ function fakeSb({ oldPath = null as string | null, updateError = null as { messa
         },
       }),
     }),
-    storage: {
-      from: () => ({
-        upload: async (path: string) => {
-          calls.push(`upload:${path}`);
-          return { error: null };
-        },
-        remove: async (paths: string[]) => {
-          calls.push(`remove:${paths.join(",")}`);
-          return { error: null };
-        },
-        createSignedUrl: async () => ({ data: { signedUrl: "https://x/y" } }),
-      }),
-    },
   };
+  // Storage calls land in the same ordered log, written the way the old checks expect.
+  fakeStorage.listen((c) => calls.push(c.replace(/^put:avatars\//, "upload:").replace(/^remove:avatars\//, "remove:")));
   return { sb: sb as never, calls };
 }
 

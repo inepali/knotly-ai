@@ -81,9 +81,10 @@ describe("fitWithin", () => {
 });
 
 describe("portfolioUrl", () => {
-  it("points at the public bucket", () => {
-    expect(portfolioUrl(`${ME}/${FILE}.webp`, "https://abc.supabase.co/")).toBe(
-      `https://abc.supabase.co/storage/v1/object/public/vendor-portfolio/${ME}/${FILE}.webp`
+  it("points at the stable /media address", () => {
+    expect(portfolioUrl("v/a b.webp")).toBe("/media/portfolio/v/a%20b.webp");
+    expect(portfolioUrl(`${ME}/${FILE}.webp`, "https://knotly.net/")).toBe(
+      `https://knotly.net/media/portfolio/${ME}/${FILE}.webp`
     );
   });
 });
@@ -120,9 +121,9 @@ describe("toGallery", () => {
         videos: [{ id: "x", provider: "youtube", video_id: "dQw4w9WgXcQ", title: null }],
       },
       { business: "Golden Hour", kind: "Photographer", place: "Charlotte, NC" },
-      "https://abc.supabase.co"
+      "https://knotly.net"
     );
-    expect(g.photos[0].thumb).toBe("https://abc.supabase.co/storage/v1/object/public/vendor-portfolio/v/a-thumb.webp");
+    expect(g.photos[0].thumb).toBe("https://knotly.net/media/portfolio/v/a-thumb.webp");
     expect(g.photos.map((p) => p.alt)).toEqual(["Golden Hour photographer photo 1, Charlotte, NC", "Toast"]);
     expect(g.videos).toEqual([{ id: "x", provider: "youtube", videoId: "dQw4w9WgXcQ", title: null }]);
   });

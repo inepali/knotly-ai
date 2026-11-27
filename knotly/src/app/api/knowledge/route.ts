@@ -6,7 +6,8 @@ import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { fail } from "@/lib/auth";
-import { KNOWLEDGE_BUCKET, ingestKnowledge, kindOfUrl, parsePublicUrl } from "@/lib/knowledge";
+import { uploadTicket } from "@/lib/storage";
+import { ingestKnowledge, kindOfUrl, parsePublicUrl } from "@/lib/knowledge";
 import { PDF_UPLOADS_ENABLED } from "@/lib/flags";
 
 export const maxDuration = 60;
@@ -82,12 +83,15 @@ export async function POST(req: NextRequest) {
     // The browser uploads straight to storage with a one-time URL, then calls
     // POST /api/knowledge/[id] to start reading it.
     const path = `${v.userId}/${src.id}.pdf`;
-    const { data: signed, error: signError } = await supabaseAdmin.storage
-      .from(KNOWLEDGE_BUCKET)
-      .createSignedUploadUrl(path);
-    if (signError || !signed) return fail("Couldn't prepare the upload. Please try again.", 500);
+    let ticket;
+    try {
+      ticket = await uploadTicket("knowledge", path, { contentType: "application/pdf", bytes: add.size });
+    } catch {
+      await supabaseAdmin.from("vendor_knowledge").delete().eq("id", src.id);
+      return fail("Couldn't prepare the upload. Please try again.", 500);
+    }
     await supabaseAdmin.from("vendor_knowledge").update({ file_path: path }).eq("id", src.id);
-    return Response.json({ ok: true, id: src.id, upload: { bucket: KNOWLEDGE_BUCKET, path, token: signed.token } });
+    return Response.json({ ok: true, id: src.id, upload: ticket });
   }
 
   after(() => ingestKnowledge(src.id));

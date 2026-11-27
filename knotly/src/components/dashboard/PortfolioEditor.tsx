@@ -4,14 +4,12 @@
 "use client";
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { supabaseBrowser } from "@/lib/supabase/browser";
 import {
   ACCEPTED_TYPES,
   FULL_EDGE,
   MAX_IMAGES,
   MAX_UPLOAD_BYTES,
   MAX_VIDEOS,
-  PORTFOLIO_BUCKET,
   THUMB_EDGE,
   fitBatch,
   fitWithin,
@@ -19,12 +17,16 @@ import {
   portfolioUrl,
   videoThumbUrl,
 } from "@/lib/portfolio";
-import type { PortfolioImage, PortfolioVideo } from "@/lib/actions/vendor-portfolio";
+import type { PortfolioImage, PortfolioVideo, RequestPortfolioUploadInput } from "@/lib/actions/vendor-portfolio";
+import { uploadWithTicket, type UploadTicket } from "@/lib/storage/client";
 import { Button } from "@/components/ui/Button";
 import { fieldClasses, labelClasses, panelClasses } from "@/components/ui/fields";
 
 type Result = { ok: true } | { ok: false; error: string };
 type Actions = {
+  requestUpload: (i: RequestPortfolioUploadInput) => Promise<
+    { ok: true; data: { storagePath: string; thumbPath: string; tickets: { full: UploadTicket; thumb: UploadTicket } } } | { ok: false; error: string }
+  >;
   addImage: (i: { storagePath: string; thumbPath: string; caption?: string; width: number; height: number }) => Promise<Result>;
   updateImage: (i: { id: string; caption?: string; isCover?: boolean }) => Promise<Result>;
   deleteImage: (i: { id: string }) => Promise<Result>;
@@ -47,7 +49,6 @@ async function encode(bitmap: ImageBitmap, edge: number, quality: number) {
   return { blob, ...size };
 }
 
-const extFor = (b: Blob) => (b.type === "image/webp" ? "webp" : "jpg");
 
 const move = <T,>(list: T[], from: number, to: number) => {
   const next = [...list];
@@ -59,7 +60,6 @@ const move = <T,>(list: T[], from: number, to: number) => {
 type Upload = { name: string; status: "waiting" | "uploading" | "done" | "error"; error?: string };
 
 export default function PortfolioEditor({
-  vendorId,
   images: initialImages,
   videos: initialVideos,
   actions,
@@ -115,20 +115,16 @@ export default function PortfolioEditor({
     try {
       const full = await encode(bitmap, FULL_EDGE, 0.82);
       const thumb = await encode(bitmap, THUMB_EDGE, 0.78);
-      const id = crypto.randomUUID();
-      const storagePath = `${vendorId}/${id}.${extFor(full.blob)}`;
-      const thumbPath = `${vendorId}/${id}-thumb.${extFor(thumb.blob)}`;
-
-      const bucket = supabaseBrowser().storage.from(PORTFOLIO_BUCKET);
-      const opts = (b: Blob) => ({ contentType: b.type, cacheControl: "31536000", upsert: false });
-      const a = await bucket.upload(storagePath, full.blob, opts(full.blob));
-      if (a.error) return a.error.message;
-      const b = await bucket.upload(thumbPath, thumb.blob, opts(thumb.blob));
-      if (b.error) {
-        await bucket.remove([storagePath]);
-        return b.error.message;
-      }
-      // The server records it (and deletes both files if it can't, e.g. at the 25-photo limit).
+      // The server checks there's room and hands out one-time upload tickets for both files.
+      const t = await actions.requestUpload({
+        full: { contentType: full.blob.type as "image/webp" | "image/jpeg", bytes: full.blob.size },
+        thumb: { contentType: thumb.blob.type as "image/webp" | "image/jpeg", bytes: thumb.blob.size },
+      });
+      if (!t.ok) return t.error;
+      const { storagePath, thumbPath, tickets } = t.data;
+      const upErr = (await uploadWithTicket(tickets.full, full.blob)) ?? (await uploadWithTicket(tickets.thumb, thumb.blob));
+      if (upErr) return upErr;
+      // The server verifies and records it (and deletes both files if it can't).
       const r = await actions.addImage({ storagePath, thumbPath, width: full.width, height: full.height });
       return r.ok ? null : r.error;
     } catch {

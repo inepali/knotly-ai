@@ -50,11 +50,13 @@ import {
   deletePortfolioImage,
   deletePortfolioVideo,
   reorderPortfolio,
+  requestPortfolioUpload,
   updatePortfolioImage,
   type AddPortfolioImageInput,
   type AddPortfolioVideoInput,
   type DeletePortfolioItemInput,
   type ReorderPortfolioInput,
+  type RequestPortfolioUploadInput,
   type UpdatePortfolioImageInput,
 } from "@/lib/actions/vendor-portfolio";
 
@@ -90,7 +92,12 @@ export const removeRuleAction = async (i: RemoveRuleInput) => run((sb, u) => rem
 export const saveCustomInstructionsAction = async (i: SaveCustomInstructionsInput) =>
   run((sb, u) => saveCustomInstructions(sb, u, i));
 
-// Portfolio: the browser uploads photos to storage first, then records them here.
+// Portfolio: the browser gets upload tickets, sends the files to storage, then records them here.
+export async function requestPortfolioUploadAction(i: RequestPortfolioUploadInput) {
+  const me = await vendorOrError();
+  if (me.error !== undefined) return { ok: false as const, error: me.error };
+  return requestPortfolioUpload(me.sb, me.userId, i);
+}
 // The public page and listings read on each request, so the dashboard refresh is enough.
 export const addPortfolioImageAction = async (i: AddPortfolioImageInput) => run((sb, u) => addPortfolioImage(sb, u, i));
 export const updatePortfolioImageAction = async (i: UpdatePortfolioImageInput) => run((sb, u) => updatePortfolioImage(sb, u, i));

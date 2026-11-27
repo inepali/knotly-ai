@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!site) return { title: "Not found", robots: { index: false } };
   const date = formatWeddingDate(site.weddingDate);
   const open = !site.passwordHash;
-  const cover = open && site.photos[0] ? sitePhotoUrl(site.photos[0].path) : undefined;
+  const cover = open && site.photos[0] ? sitePhotoUrl(site.photos[0].path, siteUrl()) : undefined;
   return {
     title: `${site.title}${date ? ` · ${date}` : ""}`,
     description: open ? [date, site.place].filter(Boolean).join(" · ") || "Our wedding" : "Our wedding",

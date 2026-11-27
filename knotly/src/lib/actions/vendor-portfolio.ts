@@ -1,10 +1,12 @@
 // src/lib/actions/vendor-portfolio.ts — a vendor's portfolio photos and video links (shared by the
-// dashboard's Portfolio page). Photos are uploaded by the browser straight to the public
-// "vendor-portfolio" bucket (they're too big for a server action); these functions then record,
-// edit, reorder and delete them. Limits are enforced by the database trigger.
+// dashboard's Portfolio page). The browser asks for upload tickets (requestPortfolioUpload), sends
+// the photo and thumbnail straight to storage (R2 or Supabase, see lib/storage), then these functions
+// record, edit, reorder and delete them. Limits are enforced by the database trigger.
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { fail, ok, parseInput, type Sb } from "./result";
-import { MAX_IMAGES, MAX_VIDEOS, PORTFOLIO_BUCKET, isOwnPhotoPath, parseVideoUrl, portfolioError } from "@/lib/portfolio";
+import { MAX_IMAGES, MAX_VIDEOS, isOwnPhotoPath, parseVideoUrl, portfolioError } from "@/lib/portfolio";
+import { removeObjects, uploadProblem, uploadTicket, verifyUpload } from "@/lib/storage";
 
 const Id = z.uuid();
 const Caption = z.string().trim().max(200).optional();
@@ -17,6 +19,11 @@ export const AddPortfolioImageInput = z.object({
   height: z.number().int().positive().max(20000),
 });
 export type AddPortfolioImageInput = z.input<typeof AddPortfolioImageInput>;
+
+const FileSpec = z.object({ contentType: z.enum(["image/webp", "image/jpeg"]), bytes: z.number().int().positive() });
+export const RequestPortfolioUploadInput = z.object({ full: FileSpec, thumb: FileSpec });
+export type RequestPortfolioUploadInput = z.input<typeof RequestPortfolioUploadInput>;
+const ext = (t: string) => (t === "image/jpeg" ? "jpg" : "webp");
 
 export const UpdatePortfolioImageInput = z.object({ id: Id, caption: Caption, isCover: z.boolean().optional() });
 export type UpdatePortfolioImageInput = z.input<typeof UpdatePortfolioImageInput>;
@@ -69,6 +76,24 @@ export async function getPortfolio(sb: Sb, vendorId: string) {
   };
 }
 
+/** Two one-time upload tickets (photo + thumbnail) in this vendor's folder, if there's room. */
+export async function requestPortfolioUpload(sb: Sb, userId: string, input: unknown) {
+  const p = parseInput(RequestPortfolioUploadInput, input);
+  if (!p.ok) return p;
+  const problem = uploadProblem("portfolio", p.data.full.contentType, p.data.full.bytes) ?? uploadProblem("portfolio", p.data.thumb.contentType, p.data.thumb.bytes);
+  if (problem) return fail(problem);
+  const { count } = await sb.from(IMAGES).select("id", { count: "exact", head: true }).eq("vendor_id", userId);
+  if ((count ?? 0) >= MAX_IMAGES) return fail(`You can have up to ${MAX_IMAGES} photos.`);
+  const id = randomUUID();
+  const storagePath = `${userId}/${id}.${ext(p.data.full.contentType)}`;
+  const thumbPath = `${userId}/${id}-thumb.${ext(p.data.thumb.contentType)}`;
+  const [full, thumb] = await Promise.all([
+    uploadTicket("portfolio", storagePath, p.data.full),
+    uploadTicket("portfolio", thumbPath, p.data.thumb),
+  ]);
+  return ok({ storagePath, thumbPath, tickets: { full, thumb } });
+}
+
 /** Record a photo the browser just uploaded. If that fails (e.g. the 25-photo limit), delete the files. */
 export async function addPortfolioImage(sb: Sb, userId: string, input: unknown) {
   const p = parseInput(AddPortfolioImageInput, input);
@@ -76,6 +101,11 @@ export async function addPortfolioImage(sb: Sb, userId: string, input: unknown) 
   const { storagePath, thumbPath, caption, width, height } = p.data;
   if (!isOwnPhotoPath(userId, storagePath) || !isOwnPhotoPath(userId, thumbPath) || !thumbPath.includes("-thumb.")) {
     return fail("That upload doesn't belong to your account.");
+  }
+  const problem = (await verifyUpload("portfolio", storagePath)) ?? (await verifyUpload("portfolio", thumbPath));
+  if (problem) {
+    await removeObjects("portfolio", [storagePath, thumbPath]);
+    return fail(problem);
   }
 
   const { data: last } = await sb.from(IMAGES).select("sort_order").eq("vendor_id", userId).order("sort_order", { ascending: false }).limit(1).maybeSingle();
@@ -93,7 +123,7 @@ export async function addPortfolioImage(sb: Sb, userId: string, input: unknown) 
     .select("id")
     .single();
   if (error) {
-    await sb.storage.from(PORTFOLIO_BUCKET).remove([storagePath, thumbPath]);
+    await removeObjects("portfolio", [storagePath, thumbPath]);
     return fail(portfolioError(error.message));
   }
   return ok({ id: (data as { id: string }).id });
@@ -126,7 +156,7 @@ export async function deletePortfolioImage(sb: Sb, userId: string, input: unknow
   if (error) return fail(error.message);
   if (!data) return fail("That photo isn't in your portfolio.");
   const row = data as { storage_path: string; thumb_path: string };
-  await sb.storage.from(PORTFOLIO_BUCKET).remove([row.storage_path, row.thumb_path]);
+  await removeObjects("portfolio", [row.storage_path, row.thumb_path]);
   return ok({ id: p.data.id });
 }
 

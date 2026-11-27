@@ -25,6 +25,7 @@ import {
   moveSitePhoto,
   publishSite,
   removeSitePhoto,
+  requestSitePhotoUpload,
   saveSite,
   setSitePassword,
   type PublishSiteInput,
@@ -32,6 +33,7 @@ import {
   type SetSitePasswordInput,
   type SitePhotoInput,
   type SitePhotoRef,
+  type SiteUploadInput,
 } from "@/lib/actions/website";
 import { saveRsvpSettings, sendRsvpReminders, type SaveRsvpSettingsInput } from "@/lib/actions/rsvp";
 import { sendEmailBatch, sendRsvpReminder } from "@/lib/email";
@@ -189,6 +191,12 @@ export const publishSiteAction = async (i: PublishSiteInput) => {
   if (r.ok) revalidatePath("/w/[slug]", "page");
   return r;
 };
+// Returns data (the upload ticket) and doesn't refresh, unlike asCouple.
+export async function requestSitePhotoUploadAction(i: SiteUploadInput) {
+  const me = await coupleOrError();
+  if (me.error !== undefined) return { ok: false as const, error: me.error };
+  return requestSitePhotoUpload(me.sb, me.userId, i);
+}
 export const addSitePhotoAction = async (i: SitePhotoInput) => asCouple(addSitePhoto, i);
 export const removeSitePhotoAction = async (i: SitePhotoRef) => asCouple(removeSitePhoto, i);
 export const moveSitePhotoAction = async (i: SitePhotoRef) => asCouple(moveSitePhoto, i);

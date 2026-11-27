@@ -2,7 +2,7 @@
 // and PDFs their assistant learns from to answer couples accurately.
 "use client";
 import { useEffect, useState } from "react";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { uploadWithTicket } from "@/lib/storage/client";
 import { fieldClasses } from "@/components/ui/fields";
 import { PDF_UPLOADS_ENABLED } from "@/lib/flags";
 
@@ -131,11 +131,7 @@ export default function KnowledgePane() {
       });
       if (!r.ok) return r;
       // Straight to storage with the one-time URL, then ask the server to read it.
-      const { error: upError } = await supabaseBrowser()
-        .storage.from(r.upload.bucket)
-        .uploadToSignedUrl(r.upload.path, r.upload.token, file, {
-          contentType: "application/pdf",
-        });
+      const upError = await uploadWithTicket(r.upload, file);
       if (upError) {
         await api(`/api/knowledge/${r.id}`, { method: "DELETE" });
         return { ok: false, error: "Upload failed. Please try again." };

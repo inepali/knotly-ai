@@ -2,7 +2,7 @@
 // Every query on a table consumes the next queued result for that table (the last one repeats).
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-type Res = { data?: unknown; error?: { message: string } | null };
+type Res = { data?: unknown; error?: { message: string } | null; count?: number | null };
 
 export function mockSb(tables: Record<string, Res | Res[]> = {}, rpc: Res = { data: [] }) {
   const queues = new Map<string, Res[]>(
@@ -13,7 +13,7 @@ export function mockSb(tables: Record<string, Res | Res[]> = {}, rpc: Res = { da
   const next = (table: string): Res => {
     const q = queues.get(table) ?? [];
     const r = q.length > 1 ? q.shift()! : q[0];
-    return { data: r?.data ?? null, error: r?.error ?? null };
+    return { data: r?.data ?? null, error: r?.error ?? null, count: r?.count ?? null };
   };
 
   const from = (table: string) => {

@@ -8,6 +8,7 @@ import { vendorPath } from "@/lib/vendor-seo";
 import PortfolioEditor from "@/components/dashboard/PortfolioEditor";
 import {
   addPortfolioImageAction,
+  requestPortfolioUploadAction,
   addPortfolioVideoAction,
   deletePortfolioImageAction,
   deletePortfolioVideoAction,
@@ -67,6 +68,7 @@ export default async function PortfolioPage() {
         images={portfolio.images}
         videos={portfolio.videos}
         actions={{
+          requestUpload: requestPortfolioUploadAction,
           addImage: addPortfolioImageAction,
           updateImage: updatePortfolioImageAction,
           deleteImage: deletePortfolioImageAction,
