@@ -9,7 +9,7 @@ export function SiteFooter() {
       <Container>
         <div className="flex flex-col items-start justify-between gap-8 py-10 md:flex-row md:items-center">
           <div className="flex items-center text-gray-900">
-            <Logomark className="h-10 w-10 flex-none" />
+            <Logomark className="h-9 w-auto flex-none" />
             <div className="ml-4">
               <p className="text-base font-semibold">Knotly</p>
               <p className="text-sm text-gray-600">Wedding planning in the Carolinas.</p>
