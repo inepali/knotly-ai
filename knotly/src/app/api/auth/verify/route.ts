@@ -6,6 +6,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { Identifier, Password, SignupRole, TERMS_VERSION, fail, firstIssue } from "@/lib/auth";
 import { grantSignupCredit } from "@/lib/signup-credit";
+import { claimChatsFromCookies } from "@/lib/public-chat-session";
 
 const Body = z.intersection(
   Identifier,
@@ -58,6 +59,8 @@ export async function POST(req: Request) {
   // Vendors: the verified code unlocks the $10 signup credit. It usually waits for the first
   // business save (it needs the business row); trying here covers a row that already exists.
   if (finalRole === "vendor") await grantSignupCredit(supabaseAdmin, data.user.id);
+  // Couples: chats from vendors' public pages on this device move into Messages.
+  const claimedChats = finalRole === "couple" ? await claimChatsFromCookies(data.user.id) : 0;
 
-  return Response.json({ ok: true, role: finalRole });
+  return Response.json({ ok: true, role: finalRole, claimedChats });
 }

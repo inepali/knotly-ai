@@ -5,6 +5,7 @@ const h = vi.hoisted(() => ({
   updates: [] as unknown[],
   role: "couple" as string,
   grant: vi.fn<(admin: unknown, vendorId: string) => Promise<number>>(async () => 1000),
+  claim: vi.fn<(userId: string) => Promise<number>>(async () => 0),
 }));
 vi.mock("@/lib/supabase/server", () => ({ supabaseServer: async () => ({ auth: h.auth }) }));
 vi.mock("@/lib/supabase/admin", () => ({
@@ -19,6 +20,7 @@ vi.mock("@/lib/supabase/admin", () => ({
   },
 }));
 vi.mock("@/lib/signup-credit", () => ({ grantSignupCredit: h.grant }));
+vi.mock("@/lib/public-chat-session", () => ({ claimChatsFromCookies: h.claim }));
 import { POST } from "./route";
 
 const post = (body: Record<string, unknown>) =>
@@ -47,7 +49,7 @@ describe("POST /api/auth/verify", () => {
 
   it("tries the signup credit for a vendor after the email code", async () => {
     const res = await post({ method: "email", identifier: "Shop@B.com", role: "vendor" });
-    expect(await res.json()).toEqual({ ok: true, role: "vendor" });
+    expect(await res.json()).toEqual({ ok: true, role: "vendor", claimedChats: 0 });
     expect(h.grant).toHaveBeenCalledWith(expect.anything(), "u1");
     expect(h.updates[0]).toMatchObject({ role: "vendor", email: "shop@b.com" });
   });
@@ -55,6 +57,15 @@ describe("POST /api/auth/verify", () => {
   it("doesn't try the credit for a couple", async () => {
     await post({ method: "email", identifier: "a@b.com", role: "couple" });
     expect(h.grant).not.toHaveBeenCalled();
+  });
+
+  it("moves a couple's public-page chats into Messages, never a vendor's", async () => {
+    h.claim.mockResolvedValueOnce(1);
+    const res = await post({ method: "email", identifier: "a@b.com", role: "couple" });
+    expect(await res.json()).toEqual({ ok: true, role: "couple", claimedChats: 1 });
+    expect(h.claim).toHaveBeenCalledWith("u1");
+    await post({ method: "email", identifier: "a@b.com", role: "vendor" });
+    expect(h.claim).toHaveBeenCalledOnce();
   });
 
   it("marks the phone verified after a phone code", async () => {
@@ -66,7 +77,7 @@ describe("POST /api/auth/verify", () => {
   it("never downgrades an admin, and doesn't grant them a vendor credit", async () => {
     h.role = "admin";
     const res = await post({ method: "email", identifier: "a@b.com", role: "vendor" });
-    expect(await res.json()).toEqual({ ok: true, role: "admin" });
+    expect(await res.json()).toEqual({ ok: true, role: "admin", claimedChats: 0 });
     expect(h.updates[0]).not.toHaveProperty("role");
     expect(h.grant).not.toHaveBeenCalled();
   });

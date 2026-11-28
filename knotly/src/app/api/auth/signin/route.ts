@@ -4,6 +4,7 @@ import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { Identifier, credential, fail, firstIssue } from "@/lib/auth";
 import { completeSignIn } from "@/lib/auth-session";
+import { claimChatsFromCookies } from "@/lib/public-chat-session";
 
 const Body = z.intersection(Identifier, z.object({ password: z.string().min(1, "Enter your password.") }));
 
@@ -23,5 +24,8 @@ export async function POST(req: Request) {
   } as Parameters<typeof sb.auth.signInWithPassword>[0]);
   if (error || !data.user) return fail("That email/phone and password don't match.", 401);
 
-  return Response.json({ ok: true, ...(await completeSignIn(guestId, data.user.id)) });
+  const done = await completeSignIn(guestId, data.user.id);
+  // Chats from vendors' public pages on this device move into Messages (couples only; checked in SQL).
+  await claimChatsFromCookies(data.user.id);
+  return Response.json({ ok: true, ...done });
 }

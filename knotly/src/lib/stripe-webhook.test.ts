@@ -83,6 +83,8 @@ describe("handleStripeEvent", () => {
       p_intent: "pi_w1",
     });
     expect(calls.some((c) => c.table === "rpc:grant_addons")).toBe(false);
+    // Locked page leads are paid for and unlocked right after the reload.
+    expect(calls.find((c) => c.table === "rpc:unlock_page_leads")?.args[0]).toEqual({ p_vendor: "v1" });
 
     const failed = mockSb({ stripe_events: {} }, { error: { message: "invalid reload amount" } });
     vi.spyOn(console, "error").mockImplementation(() => {});

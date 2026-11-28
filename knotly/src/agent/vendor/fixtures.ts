@@ -24,6 +24,8 @@ export function makeCtx(o: Partial<VendorCtx> = {}): VendorCtx {
       holding_reply: "Thanks!",
       agent_custom_instructions: null,
       agent_custom_instructions_updated_at: null,
+      agent_display_name: null,
+      public_chat_enabled: true,
     },
     rules: [
       { kind: "price_floor", amount: 2800 },

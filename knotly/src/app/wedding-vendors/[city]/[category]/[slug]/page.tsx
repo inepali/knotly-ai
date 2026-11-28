@@ -19,6 +19,7 @@ import { PortfolioGallery } from "@/components/vendor/PortfolioGallery";
 import { VendorOffer, type AddOn, type Package } from "@/components/vendor/Offer";
 import { SiteHeader } from "@/components/ui/SiteHeader";
 import { SiteFooter } from "@/components/ui/SiteFooter";
+import TalkToAgent from "@/components/vendor/TalkToAgent";
 
 type Params = Promise<{ city: string; category: string; slug: string }>;
 
@@ -36,7 +37,10 @@ type Row = {
   vendor_packages: Package[];
   vendor_addons: AddOn[];
   testimonials: { id: string; author_name: string; rating: number | null; body: string; verified: boolean; source: string | null }[];
+  vendor_agent_settings: AgentRow | AgentRow[] | null;
+  vendor_knowledge: { id: string }[];
 };
+type AgentRow = { agent_display_name: string | null; public_chat_enabled: boolean | null };
 
 // One lookup per request, shared by the metadata and the page. Public vendors only: every
 // published vendor (see lib/public-listing).
@@ -44,7 +48,7 @@ const getVendor = cache(async (slug: string) => {
   const { data } = await supabaseAdmin
     .from("vendors")
     .select(
-      "id, business_name, category, bio, metro_slug, website, slug, service_radius_miles, published, metros(name, state), vendor_packages(id, name, description, price, inclusions), vendor_addons(id, name, description, price), testimonials(id, author_name, rating, body, verified, source)"
+      "id, business_name, category, bio, metro_slug, website, slug, service_radius_miles, published, metros(name, state), vendor_packages(id, name, description, price, inclusions), vendor_addons(id, name, description, price), testimonials(id, author_name, rating, body, verified, source), vendor_agent_settings(agent_display_name, public_chat_enabled), vendor_knowledge(id)"
     )
     .eq("slug", slug)
     .eq("published", true)
@@ -53,7 +57,13 @@ const getVendor = cache(async (slug: string) => {
   const row = data as unknown as Row;
   if (!isPublicVendor(row)) return null;
   const metro = Array.isArray(row.metros) ? row.metros[0] : row.metros;
-  return { ...row, city: metro ?? null };
+  const agent = Array.isArray(row.vendor_agent_settings) ? row.vendor_agent_settings[0] : row.vendor_agent_settings;
+  // "Talk to {agent}": on unless the vendor switched it off, and only with something to answer from.
+  const chat =
+    agent?.public_chat_enabled !== false && (row.vendor_packages.length > 0 || row.vendor_knowledge.length > 0)
+      ? { agentName: agent?.agent_display_name?.trim() || null }
+      : null;
+  return { ...row, city: metro ?? null, chat };
 });
 
 // The vendor's photos and videos, shared by the metadata (cover as the share image) and the page.
@@ -150,6 +160,16 @@ export default async function PublicVendorPage({ params }: { params: Params }) {
             <Link href="/signup" className="rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-cyan-600">
               Get a free estimate
             </Link>
+            {v.chat && (
+              <TalkToAgent
+                vendorId={v.id}
+                businessName={v.business_name}
+                agentName={v.chat.agentName}
+                categoryPlural={lowerNoun(listingNoun(v.category))}
+                returnPath={path}
+                estimateHref="/signup"
+              />
+            )}
             {v.website && (
               // The vendor typed this address, so we don't vouch for it to search engines.
               <a href={v.website} target="_blank" rel="nofollow noopener noreferrer" className="text-sm text-gray-600 underline-offset-2 hover:underline">
@@ -223,6 +243,8 @@ export default async function PublicVendorPage({ params }: { params: Params }) {
         </section>
       </main>
       <SiteFooter />
+      {/* Room for the sticky "Get a free estimate / Talk to …" bar on phones. */}
+      {v.chat && <div className="h-16 sm:hidden" aria-hidden />}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(ld) }} />
     </div>
   );

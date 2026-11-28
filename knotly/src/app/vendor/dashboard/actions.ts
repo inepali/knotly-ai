@@ -12,6 +12,7 @@ import { requestSiteUrl } from "@/lib/site";
 import { createWalletReloadSession } from "@/lib/stripe";
 import { startWalletReload, type StartWalletReloadInput } from "@/lib/actions/wallet";
 import { reportSpamLead, type ReportSpamInput } from "@/lib/actions/spam";
+import { pageLeadTranscript, setPageLeadStatus, type SetPageLeadStatusInput } from "@/lib/page-leads";
 import { cancelReviewRequest, sendReviewRequest } from "@/lib/actions/review-requests";
 import type { CancelReviewRequestInput, SendReviewRequestInput } from "@/lib/review-requests";
 import {
@@ -34,10 +35,12 @@ import {
 } from "@/lib/actions/vendor-profile";
 import {
   removeRule,
+  saveAgentIdentity,
   saveCustomInstructions,
   saveRule,
   setAutonomy,
   type RemoveRuleInput,
+  type SaveAgentIdentityInput,
   type SaveCustomInstructionsInput,
   type SaveRuleInput,
   type SetAutonomyInput,
@@ -114,6 +117,7 @@ export const saveRuleAction = async (i: SaveRuleInput) => run((sb, u) => saveRul
 export const removeRuleAction = async (i: RemoveRuleInput) => run((sb, u) => removeRule(sb, u, i));
 export const saveCustomInstructionsAction = async (i: SaveCustomInstructionsInput) =>
   run((sb, u) => saveCustomInstructions(sb, u, i));
+export const saveAgentIdentityAction = async (i: SaveAgentIdentityInput) => run((sb, u) => saveAgentIdentity(sb, u, i));
 
 // Portfolio: the browser gets upload tickets, sends the files to storage, then records them here.
 export async function requestPortfolioUploadAction(i: RequestPortfolioUploadInput) {
@@ -161,3 +165,19 @@ export async function startWalletReloadAction(i: StartWalletReloadInput) {
 
 // Report a charged lead as spam (within 14 days). An admin reviews it; approval returns the fee.
 export const reportSpamLeadAction = async (i: ReportSpamInput) => run((sb, u) => reportSpamLead(sb, u, i));
+
+// Leads from the chat on the public page: contacted / converted / spam (spam may give the fee back).
+export async function setPageLeadStatusAction(i: SetPageLeadStatusInput) {
+  const me = await vendorOrError();
+  if (me.error !== undefined) return { ok: false as const, error: me.error };
+  const r = await setPageLeadStatus(me.sb, me.userId, i);
+  if (!r.ok) return { ok: false as const, error: r.error };
+  revalidatePath("/vendor/dashboard", "layout");
+  return { ok: true as const, creditedCents: r.data.creditedCents };
+}
+export async function pageLeadTranscriptAction(leadId: string) {
+  const me = await vendorOrError();
+  if (me.error !== undefined) return { ok: false as const, error: me.error };
+  const r = await pageLeadTranscript(me.sb, leadId);
+  return r.ok ? { ok: true as const, messages: r.data } : { ok: false as const, error: r.error };
+}
