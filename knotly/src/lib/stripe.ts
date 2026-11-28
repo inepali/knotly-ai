@@ -54,14 +54,65 @@ export function checkoutSessionBody({ cart, projectId, email, successUrl, cancel
   });
 }
 
+export type SessionResult = { ok: true; url: string } | { ok: false; error: string };
+
 /** Create a Checkout Session and return its hosted URL. */
-export async function createCheckoutSession(p: CheckoutParams): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+export async function createCheckoutSession(p: CheckoutParams): Promise<SessionResult> {
+  return postCheckoutSession(checkoutSessionBody(p));
+}
+
+// Vendor wallet reloads (pricing-vendor-wallet-spec.md): $20 steps, Stripe Tax on top, and the
+// wallet is credited the pre-tax amount by the webhook (metadata.type = wallet_reload).
+export type WalletReloadParams = {
+  vendorId: string;
+  steps: number; // how many $20 steps
+  stepCents: number;
+  email?: string | null;
+  successUrl: string;
+  cancelUrl: string;
+};
+
+export const WALLET_RELOAD = "wallet_reload";
+export const NO_REFUND_NOTICE = "Wallet credit is non-refundable and has no cash value.";
+
+export function walletReloadSessionBody({ vendorId, steps, stepCents, email, successUrl, cancelUrl }: WalletReloadParams) {
+  const metadata = { type: WALLET_RELOAD, vendor_id: vendorId, amount_cents: steps * stepCents };
+  return toForm({
+    mode: "payment",
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    client_reference_id: vendorId,
+    customer_email: email ?? undefined,
+    billing_address_collection: "required",
+    automatic_tax: { enabled: true },
+    metadata,
+    payment_intent_data: { metadata },
+    custom_text: { submit: { message: NO_REFUND_NOTICE } },
+    line_items: {
+      0: {
+        quantity: steps,
+        price_data: {
+          currency: "usd",
+          unit_amount: stepCents,
+          tax_behavior: "exclusive",
+          product_data: { name: `Knotly wallet credit ($${stepCents / 100})`, tax_code: TAX_CODE },
+        },
+      },
+    },
+  });
+}
+
+export async function createWalletReloadSession(p: WalletReloadParams): Promise<SessionResult> {
+  return postCheckoutSession(walletReloadSessionBody(p));
+}
+
+async function postCheckoutSession(body: URLSearchParams): Promise<SessionResult> {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return { ok: false, error: "Payments aren't set up yet." };
   const res = await fetch(`${API}/checkout/sessions`, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/x-www-form-urlencoded" },
-    body: checkoutSessionBody(p),
+    body,
   });
   const json = (await res.json().catch(() => ({}))) as { url?: string; error?: { message?: string } };
   if (!res.ok || !json.url) {

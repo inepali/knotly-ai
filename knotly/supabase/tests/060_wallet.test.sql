@@ -373,4 +373,31 @@ begin
   perform tap_tests.logout();
 end $$;
 
+-- Step 5: a reload records its payment intent; a Stripe refund takes back its pre-tax share.
+create function tap_tests.test_wallet_reload_refund() returns setof text language plpgsql as $$
+declare st text;
+begin
+  perform credit_wallet(tap_tests.id('c1'), 4000, 'cs_r1', 'pi_r1');          -- $40 (+ tax at Stripe)
+  return next is(wallet_balance(tap_tests.id('c1')), 5000, '$40 reload credited');
+  return next is(refund_wallet_payment('pi_unknown', 4280, 4280), null, 'not a wallet payment: null');
+
+  -- Half the charge (tax included) refunded: $20 back off the wallet.
+  return next is(refund_wallet_payment('pi_r1', 4280, 2140), 2000, 'half refunded: $20 debited');
+  return next is(refund_wallet_payment('pi_r1', 4280, 2140), 0, 'same event again: nothing more');
+  return next is(refund_wallet_payment('pi_r1', 4280, 4280), 2000, 'rest refunded: the other $20');
+  return next is(wallet_balance(tap_tests.id('c1')), 1000, 'back to $10');
+
+  -- Credit already spent stays spent: never below $0 available.
+  perform credit_wallet(tap_tests.id('c1'), 2000, 'cs_r2', 'pi_r2');
+  insert into wallet_transactions (vendor_id, kind, amount_cents, note) values (tap_tests.id('c1'), 'adjust', -2700, 'spent');
+  -- balance 300, $1 on hold for quote 81 -> available 200
+  return next is(refund_wallet_payment('pi_r2', 2140, 2140), 200, 'debits only what is available');
+  return next is(wallet_available(tap_tests.id('c1')), 0, 'available is 0, not negative');
+
+  perform tap_tests.login(tap_tests.id('c1'));
+  st := tap_tests.sqlstate_of('select refund_wallet_payment(''pi_r1'', 1, 1)');
+  perform tap_tests.logout();
+  return next is(st, '42501', 'vendors cannot call refund_wallet_payment');
+end $$;
+
 select * from runtests('tap_tests'::name, '^test_');
