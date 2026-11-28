@@ -50,6 +50,23 @@ describe("saveBusinessProfile", () => {
     expect(called("vendors", "update")[0].args[0]).toEqual({ bio: "hi" });
     expect(after).toHaveBeenCalledOnce();
   });
+
+  it("grants the signup credit when the first save creates the business", async () => {
+    const { sb, called } = mockSb({ vendors: [{ data: null }, { data: null }, { data: { id: "v1" } }] });
+    const admin = mockSb({}, { data: 1000 });
+    const r = await saveBusinessProfile(sb, "v1", { businessName: "Golden Hour", category: "photographer" }, { admin: admin.sb });
+    expect(called("vendors", "insert")).toHaveLength(1);
+    expect(admin.called("rpc:grant_signup_credit", "rpc")[0].args[0]).toEqual({ p_vendor: "v1" });
+    expect(r.ok && r.data.signupCreditCents).toBe(1000);
+  });
+
+  it("doesn't try the credit when updating an existing business", async () => {
+    const { sb } = mockSb({ vendors: { data: { id: "v1" } } });
+    const admin = mockSb({}, { data: 1000 });
+    const r = await saveBusinessProfile(sb, "v1", { bio: "hi" }, { admin: admin.sb });
+    expect(admin.calls).toHaveLength(0);
+    expect(r.ok && r.data.signupCreditCents).toBe(0);
+  });
 });
 
 describe("savePackages", () => {

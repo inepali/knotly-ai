@@ -116,6 +116,29 @@ begin
   return next is(grant_signup_credit(tap_tests.id('c2')), 0, 'same business gets none');
 end $$;
 
+-- Step 2: a confirmed email (the sign-up code) also unlocks the credit, once per inbox.
+create function tap_tests.test_wallet_signup_credit_email() returns setof text language plpgsql as $$
+begin
+  return next is(normalize_email('Jane.Doe+knotly@GoogleMail.com'), 'janedoe@gmail.com', 'gmail dots and +tags ignored');
+  return next is(normalize_email('jo.ann+x@Example.com'), 'jo.ann@example.com', 'other domains drop the +tag only');
+  return next is(normalize_email('nope'), null, 'not an email');
+
+  return next is(grant_signup_credit(tap_tests.id('c1')), 0, 'no credit before the email is confirmed');
+  update auth.users set email_confirmed_at = now() where id = tap_tests.id('c1');
+  return next is(grant_signup_credit(tap_tests.id('c1')), 1000, '$10 once the email is confirmed');
+  return next is(grant_signup_credit(tap_tests.id('c1')), 0, '... only once');
+  return next is((select email_key from signup_credit_claims where vendor_id = tap_tests.id('c1')),
+                 'vendor-1@test.invalid', 'claim keyed on the normalized email');
+
+  -- Same inbox with a +tag on another vendor: none.
+  update auth.users set email = 'vendor-1+again@test.invalid', email_confirmed_at = now() where id = tap_tests.id('c2');
+  return next is(grant_signup_credit(tap_tests.id('c2')), 0, 'same inbox (+tag) gets none');
+
+  -- A different inbox and business: credited.
+  update auth.users set email = 'other@test.invalid' where id = tap_tests.id('c2');
+  return next is(grant_signup_credit(tap_tests.id('c2')), 1000, 'a different inbox and business is credited');
+end $$;
+
 create function tap_tests.test_wallet_reload() returns setof text language plpgsql as $$
 declare st text;
 begin

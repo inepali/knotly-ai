@@ -87,7 +87,15 @@ export async function sendReviewRequestAction(i: SendReviewRequestInput) {
 }
 export const cancelReviewRequestAction = async (i: CancelReviewRequestInput) => run((sb, u) => cancelReviewRequest(sb, u, i));
 
-export const saveBusinessAction = async (i: SaveBusinessProfileInput) => run((sb, u) => saveBusinessProfile(sb, u, i));
+// The first save creates the business row, which is when the $10 signup credit can be granted.
+export async function saveBusinessAction(i: SaveBusinessProfileInput) {
+  const me = await vendorOrError();
+  if (me.error !== undefined) return { ok: false as const, error: me.error };
+  const r = await saveBusinessProfile(me.sb, me.userId, i, { admin: supabaseAdmin });
+  if (!r.ok) return { ok: false as const, error: r.error ?? "Something went wrong." };
+  revalidatePath("/vendor/dashboard", "layout");
+  return { ok: true as const, signupCreditCents: r.data.signupCreditCents };
+}
 export const publishAction = async (i: PublishProfileInput) => run((sb, u) => publishProfile(sb, u, i));
 export const deleteReviewAction = async (i: DeleteItemInput) => run((sb, u) => deleteTestimonial(sb, u, i));
 

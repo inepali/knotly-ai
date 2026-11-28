@@ -8,6 +8,7 @@ import { deleteReviewAction, publishAction, saveBusinessAction } from "@/app/ven
 import { useAction } from "./useAction";
 import ReviewRequests, { type Client, type SentRequest } from "./ReviewRequests";
 import { reviewBadge } from "@/lib/review-requests";
+import { signupCreditNotice } from "@/lib/signup-credit";
 
 type Review = { id: string; author_name: string; rating: number | null; body: string; verified: boolean; source?: string | null };
 type Vendor = {
@@ -70,7 +71,10 @@ export default function BusinessForm({
                 website: v.website.trim() || undefined,
               }),
             undefined,
-            "Saved."
+            (r) =>
+              "signupCreditCents" in r && r.signupCreditCents > 0
+                ? `Saved. ${signupCreditNotice(r.signupCreditCents)}`
+                : "Saved."
           );
         }}
       >

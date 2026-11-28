@@ -10,15 +10,16 @@ export function useAction() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
-  function run(fn: () => Promise<Result>, onOk?: () => void, okNotice = "") {
+  /** `okNotice` can be built from the action's result (e.g. "Saved. You have $10 in free credit"). */
+  function run<R extends Result>(fn: () => Promise<R>, onOk?: (r: R) => void, okNotice: string | ((r: R) => string) = "") {
     setError("");
     setNotice("");
     start(async () => {
       const r = await fn();
       if (!r.ok) setError(r.error ?? "Something went wrong.");
       else {
-        setNotice(okNotice);
-        onOk?.();
+        setNotice(typeof okNotice === "function" ? okNotice(r) : okNotice);
+        onOk?.(r);
       }
     });
   }
