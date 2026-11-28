@@ -40,3 +40,13 @@ Statuses: [OPEN] · [ANSWERED] · [DONE]. Secrets go in .env.local, never here.
 - **Blocking?** no — `/api/auth/verify` already sets `phone_verified` after a phone code, and
   `grant_signup_credit()` accepts a verified phone, so nothing else changes when it's connected
 - **Answer:**
+
+### [OPEN] DB-005 · CRON_SECRET in Vercel
+- **Needed for:** the nightly wallet hold release (`/api/cron/wallet-holds`, scheduled in `vercel.json`)
+- **What exactly:** A long random `CRON_SECRET` in the Vercel project's environment (Production and
+  Preview). Vercel Cron sends it as `Authorization: Bearer …`; the route refuses everything without it.
+  Also check the Vercel project's root directory is `knotly/`, where `vercel.json` lives.
+- **Where to put it:** Vercel → Project → Settings → Environment Variables (never in the repo)
+- **Blocking?** no — until it's set the job just returns 401 and holds wait (they still release
+  when estimates are declined)
+- **Answer:**
