@@ -170,3 +170,18 @@ extends the Phase 0 billing tables instead of adding a second ledger:
   `src/lib/estimates.ts`. Website links render only for http(s) URLs.
 - pgTAP: 060 now 112 assertions. Vitest: `estimates.test.ts` (unlock loader), new
   `api/threads/[id]/reply/route.test.ts`. Not run here; run `pnpm test`.
+
+## 2026-11-28: Vendor wallet, step 5 (Stripe reloads)
+- `20261128160000_wallet_reload.sql`: `wallet_transactions.stripe_intent`; `credit_wallet()` gains
+  `p_intent` (signature changed: dropped + recreated); `refund_wallet_payment(intent, amount,
+  refunded)` takes back the refunded share of the pre-tax credit, cumulative (repeat / partial
+  events never double-debit), never below $0 available; returns null when the intent isn't a reload.
+- App: `src/lib/actions/wallet.ts` `startWalletReload()` (steps 1–max, `can_reload()` required,
+  prices from `vendor_pricing()`), `startWalletReloadAction` in vendor dashboard actions.
+  `src/lib/stripe.ts` `walletReloadSessionBody()` / `createWalletReloadSession()` (quantity × $20,
+  Stripe Tax exclusive, `metadata.type = wallet_reload`, no-refund notice on the pay button).
+  Webhook: paid `wallet_reload` → `credit_wallet(amount_subtotal)` ("credited"); `charge.refunded`
+  tries `refund_wallet_payment` first ("debited"), then the add-ons as before.
+- Success/cancel URLs go to `/vendor/dashboard/account`, which arrives in step 6.
+- pgTAP: 060 now 121 assertions. Vitest: `wallet.test.ts`, reload body in `stripe.test.ts`,
+  two webhook cases. Not run here; run `pnpm test`.

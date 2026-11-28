@@ -3,7 +3,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type StripeEvent = { id: string; type: string; data: { object: Record<string, unknown> } };
-export type WebhookOutcome = "duplicate" | "granted" | "revoked" | "ignored" | "error";
+export type WebhookOutcome = "duplicate" | "granted" | "revoked" | "credited" | "debited" | "ignored" | "error";
 
 export async function handleStripeEvent(db: SupabaseClient, event: StripeEvent): Promise<WebhookOutcome> {
   // De-dupe: Stripe may deliver the same event more than once.
@@ -14,6 +14,18 @@ export async function handleStripeEvent(db: SupabaseClient, event: StripeEvent):
   if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
     if (o.payment_status !== "paid") return "ignored"; // async methods finish in a later event
     const meta = (o.metadata ?? {}) as Record<string, string>;
+    // Vendor wallet reload: credit the pre-tax amount (amount_subtotal), once per session.
+    if (meta.type === "wallet_reload") {
+      if (!meta.vendor_id) return "ignored";
+      const { error } = await db.rpc("credit_wallet", {
+        p_vendor: meta.vendor_id,
+        p_cents: (o.amount_subtotal as number | undefined) ?? 0,
+        p_session: o.id as string,
+        p_intent: (o.payment_intent as string | null) ?? null,
+      });
+      if (error) console.error("[stripe] wallet credit failed", o.id, error.message);
+      return error ? "error" : "credited";
+    }
     const keys = (meta.keys ?? "").split(",").filter(Boolean);
     const project = meta.project_id || (o.client_reference_id as string | undefined);
     if (!project || !keys.length) return "ignored";
@@ -32,6 +44,14 @@ export async function handleStripeEvent(db: SupabaseClient, event: StripeEvent):
   if (event.type === "charge.refunded") {
     const intent = o.payment_intent as string | undefined;
     if (!intent) return "ignored";
+    // A wallet reload? Take back the refunded share (partial refunds too). null = not a reload.
+    const { data: debited, error: walletError } = await db.rpc("refund_wallet_payment", {
+      p_intent: intent,
+      p_amount: (o.amount as number | undefined) ?? 0,
+      p_refunded: (o.amount_refunded as number | undefined) ?? 0,
+    });
+    if (walletError) return "error";
+    if (typeof debited === "number") return "debited";
     // Partial refunds keep access; only a full refund takes the add-ons back.
     if (o.amount_refunded !== o.amount) return "ignored";
     const { error } = await db.rpc("revoke_addons_for_payment", { p_intent: intent });

@@ -9,6 +9,8 @@ import { vendorOrError } from "@/lib/vendor-session";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { sendOneEmail } from "@/lib/email";
 import { requestSiteUrl } from "@/lib/site";
+import { createWalletReloadSession } from "@/lib/stripe";
+import { startWalletReload, type StartWalletReloadInput } from "@/lib/actions/wallet";
 import { cancelReviewRequest, sendReviewRequest } from "@/lib/actions/review-requests";
 import type { CancelReviewRequestInput, SendReviewRequestInput } from "@/lib/review-requests";
 import {
@@ -147,3 +149,11 @@ export async function removeAvatarAction(): Promise<Result> {
 export const resetCalendarLinkAction =async () => run((sb, u) => resetFeedToken(sb, u));
 export const setAvailabilityAction =async (i: SetAvailabilityInput) => run((sb, u) => setAvailability(sb, u, i));
 export const saveConsultHoursAction = async (i: SaveConsultHoursInput) => run((sb, u) => saveConsultHours(sb, u, i));
+
+// Wallet reload: returns the Stripe Checkout URL; the browser goes there. The webhook credits it.
+export async function startWalletReloadAction(i: StartWalletReloadInput) {
+  const me = await vendorOrError();
+  if (me.error !== undefined) return { ok: false as const, error: me.error };
+  const r = await startWalletReload(me.sb, me.userId, i, { createSession: createWalletReloadSession, siteUrl: await requestSiteUrl() });
+  return r.ok ? { ok: true as const, url: r.data.url } : { ok: false as const, error: r.error };
+}
