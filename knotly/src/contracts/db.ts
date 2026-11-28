@@ -1,5 +1,7 @@
 // src/contracts/db.ts — database shapes shared by the db, ai and ui agents.
-// CONTRACT_VERSION: 3 (2026-11-26) — Phase 0 guests / wedding_websites / registry_links / RSVP
+// CONTRACT_VERSION: 4 (2026-11-28) — vendor wallet: wallet kinds promo + lead_credit, wallet_holds,
+//   lead spam reports, pricing_config. See 20261128120000_vendor_wallet.sql.
+// v3 (2026-11-26) — Phase 0 guests / wedding_websites / registry_links / RSVP
 //   functions removed; the couple add-ons own those (guest_households + guests, wedding_sites,
 //   rsvp_*, registry_*). See 20261126155000_reconcile_phase0.sql.
 // v2 (2026-11-25) — `needs` folded into form-first `project_needs` (no need_id links).
@@ -74,7 +76,16 @@ export type TemplateEvent = (typeof DEFAULT_TEMPLATE_EVENTS)[number];
 export const PLANS = ["basic", "pro", "payg"] as const;
 export type Plan = (typeof PLANS)[number];
 export const USAGE_KINDS = ["estimate_view", "sms"] as const; // vendor_usage.ref_id is text: quote uuid or outbox id
-export const WALLET_KINDS = ["topup", "estimate_view", "sms", "refund", "adjust"] as const;
+export const WALLET_KINDS = ["topup", "estimate_view", "sms", "refund", "adjust", "promo", "lead_credit"] as const;
+export type WalletKind = (typeof WALLET_KINDS)[number];
+export const HOLD_STATUSES = ["held", "captured", "released"] as const;
+export const HOLD_RELEASE_REASONS = ["withdrawn", "declined", "closed", "archived", "expired", "admin"] as const;
+export type HoldReleaseReason = (typeof HOLD_RELEASE_REASONS)[number];
+export const SPAM_REASONS = ["fake_couple", "fake_details", "solicitation", "other"] as const;
+export type SpamReason = (typeof SPAM_REASONS)[number];
+export const SPAM_REPORT_STATUSES = ["pending", "approved", "rejected"] as const;
+/** record_sms_usage() returns this when the wallet can't cover a text: send by email / in-app instead. */
+export const SMS_INSUFFICIENT = -1;
 
 // budget_items.source; `estimated` and the legacy `planned` are kept in sync by a trigger.
 export const BUDGET_SOURCES = ["manual", "default", "booking"] as const;

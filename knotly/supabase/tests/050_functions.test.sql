@@ -68,10 +68,11 @@ begin
   return next is(record_sms_usage(tap_tests.id('c2'), 100201), 0, 'recording the same text twice charges nothing');
   return next is(wallet_balance(tap_tests.id('c2')), 0, 'Basic overage is invoiced, not taken from a wallet');
 
-  -- V1 is Pay as you go: 20 cents from the wallet.
+  -- V1 is Pay as you go: 50 free texts a month (20261128120000_vendor_wallet.sql), so this one is free.
+  -- Overage from the wallet is covered in 060_wallet.test.sql.
   amt := record_sms_usage(tap_tests.id('c1'), 100300);
-  return next is(amt, 20, 'Pay-as-you-go text costs 20 cents');
-  return next is(wallet_balance(tap_tests.id('c1')), 980, '... deducted from the wallet');
+  return next is(amt, 0, 'Pay-as-you-go text within the 50 free is free');
+  return next is(wallet_balance(tap_tests.id('c1')), 1000, '... nothing taken from the wallet');
 end $$;
 
 create function tap_tests.test_triggers() returns setof text language plpgsql as $$
