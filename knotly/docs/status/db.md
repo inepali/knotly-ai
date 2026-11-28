@@ -121,3 +121,18 @@ extends the Phase 0 billing tables instead of adding a second ledger:
 - pgTAP: new `060_wallet.test.sql` (84 assertions); `050` SMS test updated for the 50 free texts.
   Verified on a local Postgres 16 stand-in (billing + wallet migrations, pgTAP shim); still
   needs `bash supabase/tests/run.sh` against knotly-dev. Run `pnpm types` after migrating.
+
+## 2026-11-28: Vendor wallet, step 2 (signup credit)
+- `20261128130000_signup_credit_email.sql`: the $10 credit now also unlocks with a **confirmed
+  email** (`auth.users.email_confirmed_at`), since phone codes (Twilio) aren't set up yet. Claims
+  keep one per vendor / verified phone / business and add one per inbox (`email_key`, via
+  `normalize_email()`: lower-case, `+tag` dropped, Gmail dots ignored). `phone_key` is now nullable.
+- App: `src/lib/signup-credit.ts` (`grantSignupCredit`, never throws). Called from
+  `/api/auth/verify` for vendors and from `saveBusinessProfile()` on the save that creates the
+  business row (the usual moment, since the credit needs that row). The Business form shows
+  "Saved. You have $10 in free credit, about 10 leads." `/api/auth/verify` now also sets
+  `profiles.phone_verified` after a phone code.
+- Vendors who signed up before this have no credit; no backfill.
+- pgTAP: `test_wallet_signup_credit_email` added to 060. Vitest: `signup-credit.test.ts`,
+  new `api/auth/verify/route.test.ts`, two cases in `vendor-profile.test.ts`. Not run here
+  (no `node_modules`); run `pnpm test` and `bash supabase/tests/run.sh`.

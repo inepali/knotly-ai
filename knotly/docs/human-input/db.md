@@ -31,3 +31,12 @@ Statuses: [OPEN] · [ANSWERED] · [DONE]. Secrets go in .env.local, never here.
 - **Where to put it:** reply here when done
 - **Blocking?** no
 - **Answer:**
+
+### [OPEN] DB-004 · Twilio for phone verification codes
+- **Needed for:** signup credit by phone, vendor texts (pricing-vendor-wallet-spec.md)
+- **What exactly:** Connect a Twilio account to Supabase Auth's SMS provider (dev first). Decided
+  2026-11-27: email codes unlock the $10 signup credit for now; phone comes later.
+- **Where to put it:** Supabase dashboard → Authentication → Providers → Phone (no keys in the repo)
+- **Blocking?** no — `/api/auth/verify` already sets `phone_verified` after a phone code, and
+  `grant_signup_credit()` accepts a verified phone, so nothing else changes when it's connected
+- **Answer:**

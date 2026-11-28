@@ -46,8 +46,9 @@ This spec covers the vendor side: the lead fee, the wallet, SMS overage and the 
 - Vendors with available < fee are **skipped by matching** for the next wave, so couples aren't left waiting on vendors who can't respond. They get a "Reload to keep receiving leads" notice.
 
 ### Signup credit ($10)
-- Granted once per vendor as `kind = 'promo'` (`signup_credit_cents` config, default `1000`), **after phone verification** (NumID), so throwaway accounts can't farm it.
-- **One per verified phone number and per business** (normalized business name + metro). A repeat is still allowed to sign up, just without the credit.
+- Granted once per vendor as `kind = 'promo'` (`signup_credit_cents` config, default `1000`), **after the vendor verifies the code sent at sign-up**: their **email** for now; their **phone** once Twilio is set up. This keeps throwaway accounts from farming it.
+- **One per verified email (Gmail dots and `+tags` ignored), per verified phone number, and per business** (normalized business name + metro). A repeat is still allowed to sign up, just without the credit.
+- Granted on the first business save (it needs the business row), or right at code verification if the row already exists.
 - Promo credit is spent like any other balance (no separate bucket). It's never refundable, same as all balance.
 - Shown at signup and on the Account page: "You have $10 in free credit, about 10 leads."
 - A new vendor starts at exactly $10, which is not under $10, so they can reload after their first lead.
@@ -113,7 +114,7 @@ The old `$10 minimum top-up` check is removed; reload amounts are checked in `cr
 
 | Function | Caller | Does |
 |---|---|---|
-| `grant_signup_credit(vendor)` | server, after phone verification | Writes `promo` once per vendor / phone / business. Returns cents granted (0 if not eligible) |
+| `grant_signup_credit(vendor)` | server, after code verification and on the first business save | Writes `promo` once per vendor / email / phone / business. Returns cents granted (0 if not eligible) |
 | `place_estimate_hold(quote)` | server, when an estimate is sent | Sets the fee aside. `false` = not enough available. Pay-as-you-go only |
 | `view_quote(quote)` → `charge_estimate_view(quote)` | couple (existing) | First open captures the hold and charges once |
 | `release_estimate_hold(quote, reason)` | server | Gives a held fee back |
@@ -133,7 +134,7 @@ The old `$10 minimum top-up` check is removed; reload amounts are checked in `cr
 
 ## Build order
 1. ✅ Tables, `pricing_config`, core functions + pgTAP tests.
-2. Signup credit after phone verification.
+2. ✅ Signup credit after email verification (phone once Twilio is set up).
 3. Hold on submit (quotes trigger or agent call); skip unfunded vendors in matching.
 4. Couple's **View estimate** wired to the charge (already via `view_quote`); reveal contact.
 5. Stripe reload + webhook (Stripe Tax on).
@@ -145,7 +146,7 @@ The old `$10 minimum top-up` check is removed; reload amounts are checked in `cr
 11. Flip `PUBLIC_PAGES_REQUIRE_PLAN=false`; update pay-per-use banners in the portfolio dashboard; retire subscription UI.
 
 ## Tests
-- Signup credit: granted once after phone verify; same phone or same business gets none; not granted before verification.
+- Signup credit: granted once after email (or phone) verification; same inbox, phone or business gets none; not granted before verification.
 - Hold refused when available < fee; written when allowed; Basic/Pro need none.
 - Open: charges once; a second open, a different couple, or the vendor themself never charges.
 - Concurrency: two holds can't overspend (per-vendor lock); lead + SMS share the lock.
@@ -167,7 +168,7 @@ None right now.
 - ~~Sales tax on reloads~~ **Stripe Tax** handles it.
 - ~~Bad leads~~ **Spam leads are credited** (vendor report + admin approval, or automatically when the couple is banned as spam).
 - ~~SMS charging~~ **Charged to the wallet only past the monthly free threshold.**
-- ~~Signup promo credit~~ **$10 at signup**, after phone verification.
+- ~~Signup promo credit~~ **$10 at signup**, after email verification for now (phone via Twilio later).
 
 ## References
 - `client-add-ons-spec.md`: couple pricing, Stripe Checkout + webhook pattern, `stripe_events`

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { Identifier, Password, SignupRole, TERMS_VERSION, fail, firstIssue } from "@/lib/auth";
+import { grantSignupCredit } from "@/lib/signup-credit";
 
 const Body = z.intersection(
   Identifier,
@@ -46,11 +47,17 @@ export async function POST(req: Request) {
     .update({
       ...(current?.role === "admin" ? {} : { role }),
       is_guest: false,
-      ...(method === "email" ? { email: identifier.toLowerCase() } : { phone: identifier }),
+      // The code proved they own the phone (phone_verified gates the signup credit and texts).
+      ...(method === "email" ? { email: identifier.toLowerCase() } : { phone: identifier, phone_verified: true }),
       terms_version: TERMS_VERSION,
       terms_accepted_at: new Date().toISOString(),
     })
     .eq("id", data.user.id);
 
-  return Response.json({ ok: true, role: current?.role === "admin" ? "admin" : role });
+  const finalRole = current?.role === "admin" ? "admin" : role;
+  // Vendors: the verified code unlocks the $10 signup credit. It usually waits for the first
+  // business save (it needs the business row); trying here covers a row that already exists.
+  if (finalRole === "vendor") await grantSignupCredit(supabaseAdmin, data.user.id);
+
+  return Response.json({ ok: true, role: finalRole });
 }

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { after } from "next/server";
 import { Category, resolveMetro } from "@/agent/shared";
 import { refreshVendorEmbedding } from "@/lib/embeddings";
+import { grantSignupCredit } from "@/lib/signup-credit";
 import { fail, ok, parseInput, type ActionCtx, type Sb } from "./result";
 
 export const SaveBusinessProfileInput = z.object({
@@ -76,7 +77,11 @@ export async function getMyBusiness(sb: Sb, userId: string) {
   return ok((await getVendor(sb, userId)) ?? { empty: true });
 }
 
-export async function saveBusinessProfile(sb: Sb, userId: string, input: unknown) {
+/**
+ * `deps.admin` (service role) lets the first save grant the $10 signup credit: it needs the
+ * business row, which this save creates. `signupCreditCents` is > 0 only on the save that granted it.
+ */
+export async function saveBusinessProfile(sb: Sb, userId: string, input: unknown, deps: { admin?: Sb } = {}) {
   const p = parseInput(SaveBusinessProfileInput, input);
   if (!p.ok) return p;
   const i = p.data;
@@ -106,7 +111,8 @@ export async function saveBusinessProfile(sb: Sb, userId: string, input: unknown
     : await sb.from("vendors").insert({ id: userId, ...patch });
   if (error) return fail(error.message);
   reembed(userId);
-  return ok({ profile: await getVendor(sb, userId) });
+  const signupCreditCents = !existing && deps.admin ? await grantSignupCredit(deps.admin, userId) : 0;
+  return ok({ profile: await getVendor(sb, userId), signupCreditCents });
 }
 
 export async function savePackages(sb: Sb, userId: string, input: unknown) {
