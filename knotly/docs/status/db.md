@@ -90,3 +90,34 @@
   The Phase 0 public_website / RSVP function tests are replaced.
 - `types.ts`: removed the Phase 0 `guests`, `registry_links`, `wedding_websites` and the four
   functions. Run `pnpm types` after migrating to pick up the add-on tables.
+
+## 2026-11-28: Vendor wallet, step 1 (CONTRACT_VERSION 4)
+Spec: `docs/specs/pricing-vendor-wallet-spec.md`. Migration `20261128120000_vendor_wallet.sql`
+extends the Phase 0 billing tables instead of adding a second ledger:
+- **Ledger stays `wallet_transactions`**, balance stays `wallet_balance()`. New kinds `promo`
+  (signup credit, note `signup`) and `lead_credit` (spam credit); new columns `quote_id`, `note`,
+  `created_by`. The `$10 minimum top-up` check is dropped: `credit_wallet()` checks $20 steps
+  up to $100 from `pricing_config`. New `adjust` rows need a note (`not valid`, so old rows stay).
+- **`pricing_config`**: default row (`metro_slug` null) + optional per-metro rows; read with
+  `vendor_pricing(vendor)`. Defaults: lead $1, reload below $10 in $20 steps (max 5), signup $10,
+  50 free texts then $0.20. `plan_pricing` still drives Basic/Pro (paused, unchanged behaviour).
+- **`wallet_holds`** (one per quote): `place_estimate_hold()` sets the fee aside (false = not
+  enough available), `charge_estimate_view()` captures it on the couple's first open,
+  `release_estimate_hold()` / nightly `release_stale_holds()` give it back.
+  `wallet_available() = balance − held`. Every money move takes `lock_wallet(vendor)`.
+- **`charge_estimate_view()` behaviour change:** an estimate with no active hold is charged only
+  if the available balance covers it; otherwise the lead is free. Balances never go negative.
+- **`record_sms_usage()` behaviour change:** Pay as you go gets 50 free texts a month, then
+  $0.20 from the wallet; returns **-1** (nothing recorded) when the wallet can't cover it. Call it
+  **before** sending. Basic/Pro unchanged. Nothing in `src/` calls it yet.
+- New: `grant_signup_credit()` (after phone verification; one per vendor / phone / business),
+  `credit_wallet()` (webhook), `can_reload()`, `admin_adjust_wallet()`, `lead_spam_reports` +
+  `report_spam_lead()` (vendor, 14 days, paused after >5 rejections in 30 days),
+  `resolve_spam_report()`, `credit_spam_couple()`. Admin functions take `p_admin` and check
+  `profiles.role = 'admin'`.
+- **Not wired yet** (steps 2–11): nothing calls `place_estimate_hold()` (quotes trigger + skip
+  unfunded vendors in matching is step 3), webhook branch for `metadata.type = wallet_reload`,
+  Account page, cron for `release_stale_holds()`.
+- pgTAP: new `060_wallet.test.sql` (84 assertions); `050` SMS test updated for the 50 free texts.
+  Verified on a local Postgres 16 stand-in (billing + wallet migrations, pgTAP shim); still
+  needs `bash supabase/tests/run.sh` against knotly-dev. Run `pnpm types` after migrating.

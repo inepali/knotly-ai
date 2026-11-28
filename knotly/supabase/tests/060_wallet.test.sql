@@ -1,0 +1,282 @@
+-- Pricing & vendor wallet (20261128120000_vendor_wallet.sql): pricing config, holds, lead charge,
+-- signup credit, reloads, admin adjustments, spam credits, SMS overage, and who may call what.
+-- Fixtures: V1 (c1) is Pay as you go with a 1000-cent top-up; V2 (c2) is Basic; quote 81 is A <-> V1.
+
+-- A second estimate A <-> V1 and an admin, for the tests that need them.
+create function tap_tests.wallet_fixtures() returns void language plpgsql as $$
+begin
+  insert into quotes (id, thread_id, package_id, line_items, total, valid_until) values
+    (tap_tests.id('82'), tap_tests.id('71'), tap_tests.id('d1'), '[]', 4800, '2027-01-01');
+  insert into auth.users (id, email, raw_user_meta_data) values
+    (tap_tests.id('e9'), 'admin@test.invalid', '{"role":"couple"}');
+  update profiles set role = 'admin' where id = tap_tests.id('e9');
+end $$;
+
+create function tap_tests.test_wallet_pricing() returns setof text language plpgsql as $$
+declare p pricing_config;
+begin
+  p := vendor_pricing(tap_tests.id('c1'));
+  return next is(p.lead_fee_cents, 100, 'default lead fee is $1');
+  return next is(p.reload_below_cents, 1000, 'reload allowed under $10');
+  return next is(p.signup_credit_cents, 1000, 'signup credit is $10');
+  return next is(p.sms_free_monthly, 50, '50 free texts a month');
+
+  insert into pricing_config (metro_slug, lead_fee_cents) values ('charlotte-nc', 150);
+  return next is((vendor_pricing(tap_tests.id('c1'))).lead_fee_cents, 150, 'a metro row overrides the default');
+  return next is((vendor_pricing(tap_tests.id('a1'))).lead_fee_cents, 100, 'unknown vendor falls back to the default');
+end $$;
+
+create function tap_tests.test_wallet_holds() returns setof text language plpgsql as $$
+begin
+  perform tap_tests.wallet_fixtures();
+  return next is(place_estimate_hold(tap_tests.id('81')), true, 'hold placed with $10 available');
+  return next is(place_estimate_hold(tap_tests.id('81')), true, '... idempotent');
+  return next is((select count(*)::int from wallet_holds where quote_id = tap_tests.id('81')), 1, 'one hold row');
+  return next is(wallet_held(tap_tests.id('c1')), 100, '$1 on hold');
+  return next is(wallet_available(tap_tests.id('c1')), 900, 'available = balance - held');
+  return next is(wallet_balance(tap_tests.id('c1')), 1000, 'balance unchanged by a hold');
+  return next is((select lead_fee_cents from quotes where id = tap_tests.id('81')), 100, 'fee copied onto the estimate');
+
+  -- Not enough available: no hold.
+  insert into wallet_transactions (vendor_id, kind, amount_cents, note) values (tap_tests.id('c1'), 'adjust', -850, 'test');
+  return next is(place_estimate_hold(tap_tests.id('82')), false, 'refused when available < fee');
+  return next is((select count(*)::int from wallet_holds where quote_id = tap_tests.id('82')), 0, '... and nothing held');
+
+  -- Release gives it back, once.
+  return next is(release_estimate_hold(tap_tests.id('81'), 'withdrawn'), true, 'hold released');
+  return next is(release_estimate_hold(tap_tests.id('81'), 'withdrawn'), false, '... only once');
+  return next is(wallet_held(tap_tests.id('c1')), 0, 'nothing on hold after release');
+
+  -- Basic vendors never need a hold.
+  insert into threads (id, project_id, vendor_id) values (tap_tests.id('72'), tap_tests.id('b1'), tap_tests.id('c2'));
+  insert into quotes (id, thread_id, line_items, total, valid_until) values
+    (tap_tests.id('83'), tap_tests.id('72'), '[]', 1600, '2027-01-01');
+  return next is(place_estimate_hold(tap_tests.id('83')), true, 'Basic vendor: no hold needed');
+  return next is((select count(*)::int from wallet_holds where quote_id = tap_tests.id('83')), 0, '... none written');
+end $$;
+
+create function tap_tests.test_wallet_open_captures_hold() returns setof text language plpgsql as $$
+begin
+  perform place_estimate_hold(tap_tests.id('81'));
+  perform tap_tests.login(tap_tests.id('a1'));
+  perform view_quote(tap_tests.id('81'));
+  perform view_quote(tap_tests.id('81'));
+  perform tap_tests.logout();
+  return next is((select status from wallet_holds where quote_id = tap_tests.id('81')), 'captured', 'open captures the hold');
+  return next is(wallet_balance(tap_tests.id('c1')), 900, 'charged $1 once for two opens');
+  return next is(wallet_held(tap_tests.id('c1')), 0, 'nothing left on hold');
+  return next is((select quote_id from wallet_transactions where kind = 'estimate_view'), tap_tests.id('81'),
+                 'charge row points at the estimate');
+  return next is(release_estimate_hold(tap_tests.id('81'), 'expired'), false, 'a captured hold cannot be released');
+end $$;
+
+create function tap_tests.test_wallet_never_negative() returns setof text language plpgsql as $$
+begin
+  -- Legacy estimate (no hold) and an empty wallet: the open is free, the balance stays at 0.
+  insert into wallet_transactions (vendor_id, kind, amount_cents, note) values (tap_tests.id('c1'), 'adjust', -1000, 'test');
+  perform tap_tests.login(tap_tests.id('a1'));
+  perform view_quote(tap_tests.id('81'));
+  perform tap_tests.logout();
+  return next is(wallet_balance(tap_tests.id('c1')), 0, 'balance does not go negative');
+  return next is((select amount_cents from vendor_usage where ref_id = tap_tests.id('81')::text), 0, 'recorded as a free lead');
+end $$;
+
+create function tap_tests.test_wallet_stale_holds() returns setof text language plpgsql as $$
+begin
+  perform tap_tests.wallet_fixtures();
+  perform place_estimate_hold(tap_tests.id('81'));
+  perform place_estimate_hold(tap_tests.id('82'));
+  update wallet_holds set created_at = now() - interval '31 days' where quote_id = tap_tests.id('81');
+  update quotes set status = 'declined' where id = tap_tests.id('82');
+  return next is(release_stale_holds(), 2, 'old and declined holds released');
+  return next is((select release_reason from wallet_holds where quote_id = tap_tests.id('82')), 'declined', 'reason kept');
+  return next is(wallet_held(tap_tests.id('c1')), 0, 'nothing on hold');
+end $$;
+
+create function tap_tests.test_wallet_signup_credit() returns setof text language plpgsql as $$
+declare amt int;
+begin
+  -- Not verified yet: nothing.
+  update profiles set phone = '(704) 555-0101' where id = tap_tests.id('c1');
+  return next is(grant_signup_credit(tap_tests.id('c1')), 0, 'no credit before phone verification');
+
+  update profiles set phone_verified = true where id = tap_tests.id('c1');
+  amt := grant_signup_credit(tap_tests.id('c1'));
+  return next is(amt, 1000, '$10 after phone verification');
+  return next is(grant_signup_credit(tap_tests.id('c1')), 0, '... only once');
+  return next is(wallet_balance(tap_tests.id('c1')), 2000, 'added to the balance');
+
+  -- Same phone on another vendor: no credit.
+  update profiles set phone = '704-555-0101', phone_verified = true where id = tap_tests.id('c2');
+  return next is(grant_signup_credit(tap_tests.id('c2')), 0, 'same phone number gets none');
+
+  -- Same business name + metro with a new phone: no credit.
+  update profiles set phone = '7045550199' where id = tap_tests.id('c2');
+  update vendors set business_name = 'Test Vendor One' where id = tap_tests.id('c2');
+  return next is(grant_signup_credit(tap_tests.id('c2')), 0, 'same business gets none');
+end $$;
+
+create function tap_tests.test_wallet_reload() returns setof text language plpgsql as $$
+declare st text;
+begin
+  return next is(can_reload(tap_tests.id('c1')), false, 'cannot reload at exactly $10');
+  insert into wallet_transactions (vendor_id, kind, amount_cents, note) values (tap_tests.id('c1'), 'adjust', -1, 'test');
+  return next is(can_reload(tap_tests.id('c1')), true, 'can reload at $9.99');
+
+  return next is(credit_wallet(tap_tests.id('c1'), 4000, 'cs_test_1'), true, '$40 reload credited');
+  return next is(credit_wallet(tap_tests.id('c1'), 4000, 'cs_test_1'), false, '... a repeat webhook credits nothing');
+  return next is(wallet_balance(tap_tests.id('c1')), 4999, 'balance includes the reload once');
+
+  st := tap_tests.sqlstate_of(format('select credit_wallet(%L, 1500, ''cs_test_2'')', tap_tests.id('c1')));
+  return next is(st, 'P0001', 'not a $20 step is refused');
+  st := tap_tests.sqlstate_of(format('select credit_wallet(%L, 12000, ''cs_test_3'')', tap_tests.id('c1')));
+  return next is(st, 'P0001', 'more than $100 is refused');
+end $$;
+
+create function tap_tests.test_wallet_admin_adjust() returns setof text language plpgsql as $$
+declare st text;
+begin
+  perform tap_tests.wallet_fixtures();
+  perform admin_adjust_wallet(tap_tests.id('c1'), 500, 'goodwill', tap_tests.id('e9'));
+  return next is(wallet_balance(tap_tests.id('c1')), 1500, 'admin credit applied');
+  st := tap_tests.sqlstate_of(format('select admin_adjust_wallet(%L, -5000, ''x'', %L)', tap_tests.id('c1'), tap_tests.id('e9')));
+  return next is(st, 'P0001', 'debit beyond available refused');
+  st := tap_tests.sqlstate_of(format('select admin_adjust_wallet(%L, 100, '' '', %L)', tap_tests.id('c1'), tap_tests.id('e9')));
+  return next is(st, 'P0001', 'a note is required');
+  st := tap_tests.sqlstate_of(format('select admin_adjust_wallet(%L, 100, ''x'', %L)', tap_tests.id('c1'), tap_tests.id('a1')));
+  return next is(st, '42501', 'a non-admin cannot adjust');
+end $$;
+
+create function tap_tests.test_wallet_spam_report() returns setof text language plpgsql as $$
+declare st text; rid uuid; amt int;
+begin
+  perform tap_tests.wallet_fixtures();
+  perform place_estimate_hold(tap_tests.id('81'));
+
+  -- Not charged yet: can't report.
+  perform tap_tests.login(tap_tests.id('c1'));
+  st := tap_tests.sqlstate_of(format('select report_spam_lead(%L, ''fake_couple'')', tap_tests.id('81')));
+  perform tap_tests.logout();
+  return next is(st, 'P0001', 'an unopened lead cannot be reported');
+
+  perform tap_tests.login(tap_tests.id('a1'));
+  perform view_quote(tap_tests.id('81'));
+  perform tap_tests.logout();
+
+  -- Another vendor can't report V1's lead.
+  perform tap_tests.login(tap_tests.id('c2'));
+  st := tap_tests.sqlstate_of(format('select report_spam_lead(%L, ''fake_couple'')', tap_tests.id('81')));
+  perform tap_tests.logout();
+  return next is(st, '42501', 'only the estimate''s vendor can report');
+
+  perform tap_tests.login(tap_tests.id('c1'));
+  rid := report_spam_lead(tap_tests.id('81'), 'fake_couple', 'Phone number is fake');
+  st := tap_tests.sqlstate_of(format('select report_spam_lead(%L, ''other'')', tap_tests.id('81')));
+  return next is((select count(*)::int from lead_spam_reports), 1, 'vendor sees own report');
+  perform tap_tests.logout();
+  return next is(st, 'P0001', 'a lead is reported once');
+
+  -- Vendors can't resolve their own report.
+  perform tap_tests.login(tap_tests.id('c1'));
+  st := tap_tests.sqlstate_of(format('select resolve_spam_report(%L, true, %L)', rid, tap_tests.id('e9')));
+  perform tap_tests.logout();
+  return next is(st, '42501', 'vendor cannot call resolve_spam_report');
+
+  amt := resolve_spam_report(rid, true, tap_tests.id('e9'));
+  return next is(amt, 100, 'approval credits $1');
+  return next is(wallet_balance(tap_tests.id('c1')), 1000, 'balance back to $10');
+  return next is(credit_lead_charge(tap_tests.id('81'), tap_tests.id('e9'), 'again'), 0, 'a lead is credited once');
+
+  -- Older than 14 days: can't report.
+  perform place_estimate_hold(tap_tests.id('82'));
+  perform tap_tests.login(tap_tests.id('a1'));
+  perform view_quote(tap_tests.id('82'));
+  perform tap_tests.logout();
+  update vendor_usage set created_at = now() - interval '15 days' where ref_id = tap_tests.id('82')::text;
+  perform tap_tests.login(tap_tests.id('c1'));
+  st := tap_tests.sqlstate_of(format('select report_spam_lead(%L, ''other'')', tap_tests.id('82')));
+  perform tap_tests.logout();
+  return next is(st, 'P0001', 'too old to report after 14 days');
+end $$;
+
+create function tap_tests.test_wallet_spam_couple() returns setof text language plpgsql as $$
+begin
+  perform tap_tests.wallet_fixtures();
+  perform place_estimate_hold(tap_tests.id('81'));
+  perform place_estimate_hold(tap_tests.id('82'));
+  perform tap_tests.login(tap_tests.id('a1'));
+  perform view_quote(tap_tests.id('81'));
+  perform view_quote(tap_tests.id('82'));
+  perform tap_tests.logout();
+  return next is(wallet_balance(tap_tests.id('c1')), 800, 'two leads charged');
+  return next is(credit_spam_couple(tap_tests.id('a1'), tap_tests.id('e9')), 2, 'banning the couple credits both');
+  return next is(credit_spam_couple(tap_tests.id('a1'), tap_tests.id('e9')), 0, '... once');
+  return next is(wallet_balance(tap_tests.id('c1')), 1000, 'balance restored');
+end $$;
+
+create function tap_tests.test_wallet_sms() returns setof text language plpgsql as $$
+declare i int;
+begin
+  -- _setup.sql already records one free text for V1 this month, so 49 more stay free.
+  for i in 1..49 loop
+    perform record_sms_usage(tap_tests.id('c1'), 200000 + i);
+  end loop;
+  return next is(wallet_balance(tap_tests.id('c1')), 1000, 'first 50 texts free on Pay as you go');
+  return next is(record_sms_usage(tap_tests.id('c1'), 200051), 20, 'text 51 costs 20 cents');
+  return next is(wallet_balance(tap_tests.id('c1')), 980, '... from the wallet');
+
+  -- Empty wallet: refused, nothing recorded.
+  insert into wallet_transactions (vendor_id, kind, amount_cents, note) values (tap_tests.id('c1'), 'adjust', -980, 'test');
+  return next is(record_sms_usage(tap_tests.id('c1'), 200052), -1, 'refused when the wallet cannot cover it');
+  return next is((select count(*)::int from vendor_usage where ref_id = '200052'), 0, '... nothing recorded');
+  return next is(wallet_balance(tap_tests.id('c1')), 0, 'balance stays at 0');
+end $$;
+
+create function tap_tests.test_wallet_access() returns setof text language plpgsql as $$
+declare f text; st text; v int;
+begin
+  -- Server-only functions.
+  foreach f in array array[
+    format('place_estimate_hold(%L)', tap_tests.id('81')),
+    format('release_estimate_hold(%L, ''withdrawn'')', tap_tests.id('81')),
+    'release_stale_holds()',
+    format('grant_signup_credit(%L)', tap_tests.id('c1')),
+    format('credit_wallet(%L, 2000, ''cs_x'')', tap_tests.id('c1')),
+    format('admin_adjust_wallet(%L, 100, ''x'', %L)', tap_tests.id('c1'), tap_tests.id('c1')),
+    format('credit_lead_charge(%L, null, null)', tap_tests.id('81')),
+    format('credit_spam_couple(%L, %L)', tap_tests.id('a1'), tap_tests.id('c1')),
+    format('lock_wallet(%L)', tap_tests.id('c1'))
+  ] loop
+    perform tap_tests.login(tap_tests.id('c1'));
+    st := tap_tests.sqlstate_of('select ' || f);
+    perform tap_tests.logout();
+    return next is(st, '42501', 'vendor cannot call ' || split_part(f, '(', 1));
+  end loop;
+
+  -- Tables: vendors read only their own; nobody writes directly.
+  perform place_estimate_hold(tap_tests.id('81'));
+  perform tap_tests.login(tap_tests.id('c2'));
+  v := tap_tests.n('select 1 from wallet_holds');
+  return next is(v, 0, 'V2 cannot see V1''s holds');
+  return next is(wallet_held(tap_tests.id('c1')), 0, 'V2 sees 0 held for V1');
+  perform tap_tests.logout();
+
+  perform tap_tests.login(tap_tests.id('c1'));
+  return next is(tap_tests.n('select 1 from wallet_holds'), 1, 'V1 sees own hold');
+  st := tap_tests.sqlstate_of(format(
+    'update wallet_holds set status = ''released'', release_reason = ''admin'', resolved_at = now() where quote_id = %L',
+    tap_tests.id('81')));
+  return next is(tap_tests.n('select 1 from wallet_holds where status = ''held'''), 1, 'V1 cannot release own hold');
+  st := tap_tests.sqlstate_of('update pricing_config set lead_fee_cents = 0');
+  return next is((vendor_pricing(tap_tests.id('c1'))).lead_fee_cents, 100, 'vendors cannot change pricing');
+  return next is(tap_tests.n('select 1 from signup_credit_claims'), 0, 'claims are server-only');
+  perform tap_tests.logout();
+
+  perform tap_tests.login_anon();
+  return next is(tap_tests.n('select 1 from pricing_config'), 1, 'prices are public');
+  st := tap_tests.sqlstate_of(format('select report_spam_lead(%L, ''other'')', tap_tests.id('81')));
+  perform tap_tests.logout();
+  return next is(st, '42501', 'anon cannot report spam');
+end $$;
+
+select * from runtests('tap_tests'::name, '^test_');
