@@ -233,3 +233,15 @@ extends the Phase 0 billing tables instead of adding a second ledger:
   escalations and photo-retention routes are still unscheduled, as before.
 - The planned ledger reconciliation isn't needed: the balance is the ledger sum (no cached total).
 - Vitest: `api/cron/wallet-holds/route.test.ts`. Not run here.
+
+## 2026-11-28: Vendor wallet, step 11 (free public pages, plan wording gone)
+- `src/lib/public-listing.ts`: `isPublicVendor()` = published; `REQUIRE_PLAN` /
+  `PUBLIC_PAGES_REQUIRE_PLAN` removed from the app (it defaulted off, so behaviour is unchanged).
+  `list_public_vendors()` is called with `p_require_plan: false`. The database keeps
+  `vendors.listed_until` and the parameter, unused, in case subscriptions return.
+- Portfolio page: the "subscription ended" and "upgrade to a monthly or yearly plan" banners are
+  gone; a published vendor without a city is told to add one for their free public page.
+- Home page "For wedding vendors": free to join, free public page, $1 per opened estimate,
+  $10 credit to start (replaces "or choose a monthly plan").
+- There were no Basic/Pro subscription screens to retire. `PLANS`, `plan_pricing` and
+  `PRO_WEIGHT` stay for when subscriptions come back (waves already use equal weights).

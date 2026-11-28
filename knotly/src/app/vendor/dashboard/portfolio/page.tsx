@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { requireVendor } from "@/lib/vendor-session";
 import { getPortfolio } from "@/lib/actions/vendor-portfolio";
-import { isPublicVendor, REQUIRE_PLAN } from "@/lib/public-listing";
+import { isPublicVendor } from "@/lib/public-listing";
 import { vendorPath } from "@/lib/vendor-seo";
 import PortfolioEditor from "@/components/dashboard/PortfolioEditor";
 import {
@@ -20,12 +20,11 @@ export default async function PortfolioPage() {
   const { sb, userId } = await requireVendor();
   const [portfolio, { data: vendor }] = await Promise.all([
     getPortfolio(sb, userId),
-    sb.from("vendors").select("slug, metro_slug, category, published, listed_until").eq("id", userId).maybeSingle(),
+    sb.from("vendors").select("slug, metro_slug, category, published").eq("id", userId).maybeSingle(),
   ]);
 
   const path = vendor ? vendorPath(vendor) : null;
   const live = !!vendor && !!path && isPublicVendor(vendor);
-  const lapsed = REQUIRE_PLAN && !!vendor?.listed_until && !live;
 
   return (
     <div>
@@ -48,18 +47,14 @@ export default async function PortfolioPage() {
             </Link>
             .
           </>
-        ) : !path ? (
+        ) : (
           <>
             Add your city on the{" "}
             <Link href="/vendor/dashboard/business" className="font-semibold text-cyan-700 hover:underline">
               Business page
             </Link>{" "}
-            so couples can find your public page.
+            to get your free public page, so couples can find you on Google.
           </>
-        ) : lapsed ? (
-          "Your public page is off because your subscription ended. Renew to turn it back on. Couples who get your estimate still see your portfolio."
-        ) : (
-          "Couples who get your estimate see this portfolio. Upgrade to a monthly or yearly plan to get a public page that shows up on Google."
         )}
       </div>
 
