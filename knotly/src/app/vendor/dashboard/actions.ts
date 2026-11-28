@@ -11,6 +11,7 @@ import { sendOneEmail } from "@/lib/email";
 import { requestSiteUrl } from "@/lib/site";
 import { createWalletReloadSession } from "@/lib/stripe";
 import { startWalletReload, type StartWalletReloadInput } from "@/lib/actions/wallet";
+import { reportSpamLead, type ReportSpamInput } from "@/lib/actions/spam";
 import { cancelReviewRequest, sendReviewRequest } from "@/lib/actions/review-requests";
 import type { CancelReviewRequestInput, SendReviewRequestInput } from "@/lib/review-requests";
 import {
@@ -157,3 +158,6 @@ export async function startWalletReloadAction(i: StartWalletReloadInput) {
   const r = await startWalletReload(me.sb, me.userId, i, { createSession: createWalletReloadSession, siteUrl: await requestSiteUrl() });
   return r.ok ? { ok: true as const, url: r.data.url } : { ok: false as const, error: r.error };
 }
+
+// Report a charged lead as spam (within 14 days). An admin reviews it; approval returns the fee.
+export const reportSpamLeadAction = async (i: ReportSpamInput) => run((sb, u) => reportSpamLead(sb, u, i));

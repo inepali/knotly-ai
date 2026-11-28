@@ -28,6 +28,14 @@ export type ActivityRow = {
   wedding_month: string | null;
   has_receipt: boolean;
   total_count: number;
+  can_report: boolean;
+  report_status: "pending" | "approved" | "rejected" | null;
+};
+
+export const REPORT_STATUS_LABELS: Record<NonNullable<ActivityRow["report_status"]>, string> = {
+  pending: "Reported as spam · in review",
+  approved: "Spam confirmed · credited",
+  rejected: "Spam report not approved",
 };
 
 export const ACTIVITY_FILTERS = [
