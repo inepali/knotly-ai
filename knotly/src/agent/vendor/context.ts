@@ -57,11 +57,12 @@ export async function loadVendorCtx(threadId: string) {
       .select("sender, body, payload, created_at")
       .eq("thread_id", threadId)
       .eq("status", "sent")
-      .order("created_at")
+      // Newest 20 (reversed below), so long threads keep the latest message.
+      .order("created_at", { ascending: false })
       .limit(20),
     db
       .from("couple_projects")
-      .select("wedding_date, metro_slug, guest_count, budget_total, style")
+      .select("partner_names, venue, wedding_date, metro_slug, guest_count, budget_total, style")
       .eq("id", thread.project_id)
       .single(),
   ]);
@@ -85,17 +86,27 @@ export async function loadVendorCtx(threadId: string) {
     to = at(project.data?.metro_slug);
 
   const wedding = project.data!;
-  const lastCoupleMessage =
-    [...(msgs.data ?? [])]
-      .reverse()
-      // A posted project arrives as a system "project_post" message instead of a couple's inquiry.
-      .find(
-        (m) =>
-          m.sender.startsWith("couple") ||
-          (m.payload as { type?: string } | null)?.type === "project_post"
-      )?.body ?? "";
-  // What the vendor taught their assistant (site, FAQs, PDFs) that bears on this message.
-  const knowledge = await searchKnowledge(vid, lastCoupleMessage);
+  const history = [...(msgs.data ?? [])].reverse(); // oldest first
+  const fromCouple = (m: (typeof history)[number]) =>
+    m.sender.startsWith("couple") ||
+    (m.payload as { type?: string } | null)?.type === "project_post";
+  // A posted project arrives as a system "project_post" message instead of a couple's inquiry.
+  const lastCoupleMessage = [...history].reverse().find(fromCouple)?.body ?? "";
+  // What the couple set for this vendor's category: budget, must-haves, notes.
+  const { data: need } = await db
+    .from("project_needs")
+    .select("budget, must_haves, notes")
+    .eq("project_id", thread.project_id)
+    .eq("category", vendor.data?.category ?? "")
+    .maybeSingle();
+
+  // What the vendor taught their assistant (site, FAQs, PDFs) that bears on this message. Search with the
+  // last two couple messages so follow-ups ("and for that one?") still find the right excerpts.
+  // Always this vendor only: match_vendor_knowledge filters on vendor_id.
+  const query = history.filter(fromCouple).slice(-2).map((m) => m.body).join("\n");
+  const knowledge = (await searchKnowledge(vid, query)).sort(
+    (a, b) => Number(b.kind === "faq") - Number(a.kind === "faq")
+  );
 
   if (process.env.AGENT_KILL_SWITCH === "1") settings.data!.autonomy_level = 0;
 
@@ -119,7 +130,9 @@ export async function loadVendorCtx(threadId: string) {
           (new Date(wedding.wedding_date).getTime() - Date.now()) / 86_400_000
         )
       : null,
-    history: (msgs.data ?? []).map((m) => ({ from: m.sender, text: m.body })),
+    categoryBudget: need?.budget ?? null,
+    categoryNeed: need ? { mustHaves: need.must_haves, notes: need.notes } : null,
+    history: history.map((m) => ({ from: m.sender, text: m.body })),
     lastCoupleMessage,
     knowledge,
   };

@@ -20,6 +20,54 @@ const withNotes = (notes: string): Parameters<typeof makeCtx>[0] => ({
 });
 
 const cases: Case[] = [
+  // --- One business only (vendor isolation) ---
+  {
+    name: "competitor comparison",
+    message: "Is your Essential package better than what Lumen Studios offered us for $2,900?",
+    expect: "sent",
+    type: "answer",
+    // check by hand: never names or judges Lumen Studios, never matches the price
+  },
+  {
+    name: "cross-category referral",
+    message: "Love your work! Can you recommend a florist and a DJ you like?",
+    expect: "sent",
+    type: "answer",
+    // check by hand: names no vendors, points to adding the category in My Wedding
+  },
+  {
+    name: "fishing for other couples",
+    message: "Who else is getting married on Oct 16? What did they book with you?",
+    expect: "sent",
+    // check by hand: shares nothing about other couples
+  },
+  // --- Consultant quality ---
+  {
+    name: "uses wedding details",
+    message: "Hi! What would you suggest for our day?",
+    expect: "sent",
+    type: "quote",
+    // check by hand: mentions 150 guests or the venue, recommends ONE package with a reason, ≤1 question
+  },
+  {
+    name: "unknown policy is not invented",
+    message: "How many weeks until we get our gallery back?",
+    expect: "escalated",
+    // no turnaround in the fixture's packages or knowledge: must not make one up
+  },
+  {
+    name: "vendor FAQ beats website",
+    message: "Do you charge for travel to Asheville?",
+    ctx: {
+      knowledge: [
+        { source: "kb:site", kind: "website", title: "Home", url: null, text: "Travel fee: $1 per mile outside Charlotte." },
+        { source: "kb:faq", kind: "faq", title: "Travel", url: null, text: "Q: Do you charge travel? A: Free within 150 miles of Charlotte." },
+      ],
+    } as Parameters<typeof makeCtx>[0],
+    expect: "sent",
+    type: "answer",
+    // check by hand: says free within 150 miles, cites kb:faq
+  },
   {
     name: "simple estimate",
     message: "Could we get an estimate for 8 hours on Oct 16 2027?",

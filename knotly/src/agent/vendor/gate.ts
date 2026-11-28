@@ -75,7 +75,7 @@ export function gate(d: Decision, ctx: VendorCtx, priced: Priced | null) {
   const facts: Record<string, number | null> = {
     guest_count: ctx.wedding.guest_count,
     days_until_wedding: ctx.daysUntilWedding,
-    budget_for_category: null,
+    budget_for_category: ctx.categoryBudget,
   };
   for (const r of ctx.rules) {
     if (r.kind !== "always_review") continue;
