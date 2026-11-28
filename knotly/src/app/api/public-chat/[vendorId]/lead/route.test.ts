@@ -10,9 +10,6 @@ const h = vi.hoisted(() => ({
   emails: [] as { to: string; subject: string }[],
 }));
 
-vi.mock("@/lib/supabase/server", () => ({
-  supabaseServer: async () => ({ auth: { getUser: async () => ({ data: { user: h.user } }) } }),
-}));
 vi.mock("@/lib/supabase/admin", () => ({
   supabaseAdmin: {
     rpc: async (name: string, args: Record<string, unknown>) => {
@@ -34,6 +31,7 @@ vi.mock("@/lib/site", () => ({ siteUrl: () => "https://knotly.test" }));
 vi.mock("@/lib/public-chat-vendor", () => ({ loadChatVendor: async () => h.vendor }));
 vi.mock("@/lib/public-chat-session", () => ({
   findChatSession: async () => h.session,
+  chatViewerId: async () => h.user?.id ?? null,
   hashIp: () => "iphash",
 }));
 

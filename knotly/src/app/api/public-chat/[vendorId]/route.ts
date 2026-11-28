@@ -8,13 +8,12 @@ import { z } from "zod";
 import { helpModel } from "@/agent/models";
 import { prepareHelpMessages } from "@/agent/help";
 import { publicChatPrompt } from "@/agent/public-chat";
-import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { takeHelpQuota } from "@/lib/help-limit";
 import { searchKnowledge } from "@/lib/knowledge";
 import { loadChatVendor } from "@/lib/public-chat-vendor";
 import { categoryLabel } from "@/lib/categories";
-import { createChatSession, findChatSession, hashIp } from "@/lib/public-chat-session";
+import { chatViewerId, createChatSession, findChatSession, hashIp } from "@/lib/public-chat-session";
 import {
   PUBLIC_CHAT_IP_LIMIT,
   PUBLIC_CHAT_MAX_STEPS,
@@ -27,19 +26,11 @@ export const maxDuration = 30;
 type Ctx = { params: Promise<{ vendorId: string }> };
 const text = (message: string, status: number) => new Response(message, { status });
 
-async function viewer() {
-  const sb = await supabaseServer();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
-  return user && !user.is_anonymous ? user.id : null;
-}
-
 export async function GET(req: Request, { params }: Ctx) {
   const { vendorId } = await params;
   const vendor = await loadChatVendor(vendorId);
   if (!vendor) return text("Chat isn't available.", 404);
-  const userId = await viewer();
+  const userId = await chatViewerId();
 
   const session =
     (await findChatSession(vendorId, userId)) ??
@@ -72,16 +63,25 @@ const Body = z.object({ messages: z.unknown() });
 export async function POST(req: Request, { params }: Ctx) {
   const { vendorId } = await params;
   const vendor = await loadChatVendor(vendorId);
-  if (!vendor) return text("Chat isn't available.", 404);
+  if (!vendor) {
+    console.warn("[public-chat] POST: vendor not public or chat off", vendorId);
+    return text("Chat isn't available for this vendor right now.", 404);
+  }
 
   const body = Body.safeParse(await req.json().catch(() => null));
   if (!body.success) return text("Ask a question first.", 400);
   const prepared = prepareHelpMessages(body.data.messages);
-  if (!prepared.ok) return text(prepared.error, 400);
+  if (!prepared.ok) {
+    console.warn("[public-chat] POST: bad messages", vendorId, prepared.error);
+    return text(prepared.error, 400);
+  }
 
-  const userId = await viewer();
+  const userId = await chatViewerId();
   const session = await findChatSession(vendorId, userId);
-  if (!session) return text("Your chat expired. Please reopen it.", 409);
+  if (!session) {
+    console.warn("[public-chat] POST: no chat session (cookie missing or expired)", vendorId);
+    return text("Your chat expired. Please close it and open it again.", 409);
+  }
 
   // Busy vendor first: the browser shows the contact card instead of chatting.
   if (!(await takeHelpQuota(`pc-v:${vendorId}`, PUBLIC_CHAT_VENDOR_LIMIT)))

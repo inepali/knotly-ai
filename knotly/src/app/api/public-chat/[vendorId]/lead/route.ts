@@ -1,13 +1,12 @@
 // src/app/api/public-chat/[vendorId]/lead/route.ts — the contact card in the public-page chat.
 // Saves the lead, charges the vendor's lead fee (or locks it until they reload), emails the vendor,
 // and, for signed-in couples, moves the chat into Messages right away.
-import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { takeHelpQuota } from "@/lib/help-limit";
 import { sendOneEmail } from "@/lib/email";
 import { siteUrl } from "@/lib/site";
 import { loadChatVendor } from "@/lib/public-chat-vendor";
-import { findChatSession, hashIp } from "@/lib/public-chat-session";
+import { chatViewerId, findChatSession, hashIp } from "@/lib/public-chat-session";
 import { LEAD_IP_VENDOR_LIMIT, LEAD_SUBMIT_LIMIT, LeadInput, consentText } from "@/lib/public-chat";
 import { leadEmail } from "@/lib/page-leads";
 
@@ -25,11 +24,8 @@ export async function POST(req: Request, { params }: Ctx) {
   // Honeypot filled: pretend it worked so bots learn nothing.
   if (lead.website) return Response.json({ ok: true, status: "new" });
 
-  const sb = await supabaseServer();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
-  const userId = user && !user.is_anonymous ? user.id : null;
+  // Only couples own chats; a vendor trying their own page sends as a visitor.
+  const userId = await chatViewerId();
 
   const session = await findChatSession(vendorId, userId);
   if (!session) return fail("Your chat expired. Please reopen it and try again.", 409);
