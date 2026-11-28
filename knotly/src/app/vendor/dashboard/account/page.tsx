@@ -4,6 +4,7 @@ import Link from "next/link";
 import { requireVendor } from "@/lib/vendor-session";
 import { panelClasses } from "@/components/ui/fields";
 import ReloadForm from "@/components/dashboard/ReloadForm";
+import ReportSpamButton from "@/components/dashboard/ReportSpamButton";
 import { usd } from "@/lib/actions/wallet";
 import {
   ACTIVITY_FILTERS,
@@ -13,6 +14,7 @@ import {
   leadsLeft,
   pageNumber,
   reloadChoices,
+  REPORT_STATUS_LABELS,
   signedUsd,
   type ActivityRow,
   type WalletSummary,
@@ -141,6 +143,12 @@ export default async function AccountPage(props: PageProps<"/vendor/dashboard/ac
                       </Link>
                     ) : (
                       activityLabel(r)
+                    )}
+                    {r.report_status && <span className="ml-2 text-xs text-gray-500">{REPORT_STATUS_LABELS[r.report_status]}</span>}
+                    {r.can_report && r.quote_id && (
+                      <div className="mt-1">
+                        <ReportSpamButton quoteId={r.quote_id} />
+                      </div>
                     )}
                     {r.has_receipt && (
                       <>

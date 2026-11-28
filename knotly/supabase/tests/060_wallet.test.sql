@@ -454,4 +454,39 @@ begin
   return next is(st, '42501', 'vendors cannot call take_wallet_alert');
 end $$;
 
+-- Step 7: the Account activity says which leads can still be reported, and the report's status.
+create function tap_tests.test_wallet_activity_reports() returns setof text language plpgsql as $$
+declare r record; rid uuid;
+begin
+  perform tap_tests.wallet_fixtures();
+  perform tap_tests.login(tap_tests.id('a1'));
+  perform view_quote(tap_tests.id('81'));
+  perform tap_tests.logout();
+
+  perform tap_tests.login(tap_tests.id('c1'));
+  select * into r from wallet_activity('leads') limit 1;
+  return next is(r.can_report, true, 'a fresh charged lead can be reported');
+  return next is(r.report_status, null, '... no report yet');
+  rid := report_spam_lead(tap_tests.id('81'), 'fake_couple');
+  select * into r from wallet_activity('leads') limit 1;
+  return next is(r.can_report, false, 'not again once reported');
+  return next is(r.report_status, 'pending', '... shows pending');
+  perform tap_tests.logout();
+
+  perform resolve_spam_report(rid, true, tap_tests.id('e9'));
+  perform tap_tests.login(tap_tests.id('c1'));
+  select * into r from wallet_activity('leads') limit 1;
+  return next is(r.report_status, 'approved', 'shows approved after review');
+  return next is((select count(*)::int from wallet_activity('credits') a where a.kind = 'lead_credit'), 1, 'the credit is in the activity');
+  perform tap_tests.logout();
+
+  update vendor_usage set created_at = now() - interval '15 days';
+  update wallet_transactions set created_at = now() - interval '15 days' where kind = 'estimate_view';
+  delete from lead_spam_reports;
+  delete from wallet_transactions where kind = 'lead_credit';
+  perform tap_tests.login(tap_tests.id('c1'));
+  return next is((select a.can_report from wallet_activity('leads') a limit 1), false, 'not after 14 days');
+  perform tap_tests.logout();
+end $$;
+
 select * from runtests('tap_tests'::name, '^test_');

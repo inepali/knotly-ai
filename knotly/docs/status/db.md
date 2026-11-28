@@ -202,3 +202,15 @@ extends the Phase 0 billing tables instead of adding a second ledger:
   browser), and when a wave skips the vendor. No push yet (the app has no web push).
 - pgTAP: 060 now 142 assertions. Vitest: `wallet-alerts.test.ts`, `wallet-view.test.ts`, alert
   case in `posting.test.ts`. Not run here; run `pnpm test`.
+
+## 2026-11-28: Vendor wallet, step 7 (spam reports)
+- `20261128180000_spam_report_activity.sql`: `wallet_activity()` gains `can_report` (charged,
+  within 14 days, not reported or credited) and `report_status` (dropped + recreated: return type).
+- App: `src/lib/actions/spam.ts` (`reportSpamLead`, `resolveSpamReport`, `banSpamCouple`,
+  `loadSpamQueue`). Vendor: "Report as spam" on eligible lead rows in Account activity
+  (`ReportSpamButton`, `reportSpamLeadAction`), with the report's status shown after.
+  Admin: `/admin/spam-reports` (pending queue; Approve credits $1 and emails the vendor; Reject;
+  Ban couple as spam = Supabase Auth ban (~100 years) + `credit_spam_couple()` + an email to each
+  credited vendor). `src/lib/admin-session.ts` guards it (`profiles.role = 'admin'`, set by hand).
+- No admin navigation yet: go to `/admin/spam-reports` directly.
+- pgTAP: 060 now 149 assertions. Vitest: `spam.test.ts`. Not run here; run `pnpm test`.
