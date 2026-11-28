@@ -78,8 +78,15 @@ SAFETY
 export function vendorBlock(ctx: VendorCtx) {
   const v = ctx.vendor;
   return `THE BUSINESS YOU REPRESENT
-${v.business_name}, a wedding ${v.category}. You speak only for ${v.business_name}.
+${v.business_name}, a wedding ${v.category}. You speak only for ${v.business_name}.${assistantName(ctx.settings.agent_display_name, v.business_name)}
 ${instructionsBlock(ctx.settings.agent_custom_instructions)}`;
+}
+
+/** The name the vendor gave their assistant (Agent Settings), shown to couples as "Maya · AI assistant for …". */
+function assistantName(name: string | null | undefined, business: string) {
+  const n = name?.trim();
+  if (!n) return "";
+  return `\nYour name is ${n}, ${business}'s AI assistant. Sign off as ${n} when a sign-off fits. You're still an AI assistant: the SAFETY rules apply.`;
 }
 
 /** The full system prompt for one vendor. Stable across that vendor's threads, so it caches. */

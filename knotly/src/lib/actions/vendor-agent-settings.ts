@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { RuleSchema } from "@/agent/vendor/rules";
 import { CUSTOM_INSTRUCTIONS_MAX, cleanInstructions } from "@/agent/vendor/instructions";
+import { AgentName } from "@/lib/public-chat";
 import { fail, ok, parseInput, type Sb } from "./result";
 
 export const SaveRuleInput = z.object({
@@ -146,4 +147,25 @@ export function describeRule(kind: string, params: Record<string, unknown>): str
     default:
       return kind;
   }
+}
+
+export const SaveAgentIdentityInput = z.object({
+  name: AgentName,
+  enabled: z.boolean(),
+});
+export type SaveAgentIdentityInput = z.input<typeof SaveAgentIdentityInput>;
+
+/** The assistant's name couples see ("Talk to Maya") and whether the chat shows on the public page. */
+export async function saveAgentIdentity(sb: Sb, userId: string, input: unknown) {
+  const p = parseInput(SaveAgentIdentityInput, input);
+  if (!p.ok) return p;
+  const name = p.data.name || null;
+  const { data, error } = await sb
+    .from("vendor_agent_settings")
+    .update({ agent_display_name: name, public_chat_enabled: p.data.enabled })
+    .eq("vendor_id", userId)
+    .select("vendor_id");
+  if (error) return fail(error.message);
+  if (!data?.length) return fail("Save your Business profile first (Business page), then name your assistant.");
+  return ok({ name, enabled: p.data.enabled });
 }

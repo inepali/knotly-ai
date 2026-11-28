@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getAgentStats, listRules, saveCustomInstructions, saveRule, setAutonomy } from "./vendor-agent-settings";
+import { getAgentStats, listRules, saveAgentIdentity, saveCustomInstructions, saveRule, setAutonomy } from "./vendor-agent-settings";
 import { mockSb } from "./test-utils";
 
 describe("setAutonomy", () => {
@@ -111,5 +111,30 @@ describe("saveCustomInstructions", () => {
   it("reports database errors", async () => {
     const { sb } = mockSb({ vendor_agent_settings: { error: { message: "denied" } } });
     expect(await saveCustomInstructions(sb, "v1", { text: "hi" })).toEqual({ ok: false, error: "denied" });
+  });
+});
+
+describe("saveAgentIdentity", () => {
+  it("rejects a bad name without touching the database", async () => {
+    const { sb, calls } = mockSb();
+    expect((await saveAgentIdentity(sb, "v1", { name: "Knotly", enabled: true })).ok).toBe(false);
+    expect((await saveAgentIdentity(sb, "v1", { name: "M4ya", enabled: true })).ok).toBe(false);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("saves the name and switch; an empty name clears it", async () => {
+    const { sb, called } = mockSb({ vendor_agent_settings: { data: [{ vendor_id: "v1" }] } });
+    expect(await saveAgentIdentity(sb, "v1", { name: "  Maya ", enabled: true })).toEqual({
+      ok: true,
+      data: { name: "Maya", enabled: true },
+    });
+    expect(called("vendor_agent_settings", "update")[0].args[0]).toEqual({ agent_display_name: "Maya", public_chat_enabled: true });
+    expect((await saveAgentIdentity(sb, "v1", { name: "", enabled: false })).ok).toBe(true);
+    expect(called("vendor_agent_settings", "update")[1].args[0]).toEqual({ agent_display_name: null, public_chat_enabled: false });
+  });
+
+  it("asks for a business profile when there's no settings row", async () => {
+    const { sb } = mockSb({ vendor_agent_settings: { data: [] } });
+    expect((await saveAgentIdentity(sb, "v1", { name: "Maya", enabled: true })).ok).toBe(false);
   });
 });

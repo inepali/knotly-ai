@@ -3,6 +3,9 @@ import Link from "next/link";
 import { requireVendor } from "@/lib/vendor-session";
 import EscalationCard from "@/components/vendor/EscalationCard";
 import { panelClasses } from "@/components/ui/fields";
+import PageLeads from "@/components/vendor/PageLeads";
+import { listPageLeads } from "@/lib/page-leads";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 type LeadThread = {
   id: string;
@@ -11,7 +14,15 @@ type LeadThread = {
 };
 
 export default async function NeedsYouPage() {
-  const { sb } = await requireVendor();
+  const { sb, userId } = await requireVendor();
+  // Leads from the public-page chat that waited for funds get paid for (and unlocked) once the
+  // balance covers them: after a reload, the signup credit, or an admin credit.
+  const { error: unlockError } = await supabaseAdmin.rpc("unlock_page_leads", { p_vendor: userId });
+  if (unlockError) console.error("[needs-you] unlock page leads", unlockError.message);
+  const [pageLeads, agentName] = await Promise.all([
+    listPageLeads(sb),
+    sb.rpc("vendor_agent_name", { v: userId }).then((r) => (typeof r.data === "string" && r.data) || "your assistant"),
+  ]);
 
   const { data: items } = await sb
     .from("escalations")
@@ -80,6 +91,8 @@ export default async function NeedsYouPage() {
           </ul>
         </section>
       )}
+
+      <PageLeads leads={pageLeads.ok ? pageLeads.data : []} agentName={agentName} />
     </div>
   );
 }

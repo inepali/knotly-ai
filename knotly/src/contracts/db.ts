@@ -1,5 +1,7 @@
 // src/contracts/db.ts — database shapes shared by the db, ai and ui agents.
-// CONTRACT_VERSION: 4 (2026-11-28) — vendor wallet: wallet kinds promo + lead_credit, wallet_holds,
+// CONTRACT_VERSION: 5 (2026-11-28) — public-page chat: usage/wallet kind page_lead, vendor_leads,
+//   vendor_chat_sessions/messages. See 20261128200000_public_page_chat.sql.
+// v4 (2026-11-28) — vendor wallet: wallet kinds promo + lead_credit, wallet_holds,
 //   lead spam reports, pricing_config. See 20261128120000_vendor_wallet.sql.
 // v3 (2026-11-26) — Phase 0 guests / wedding_websites / registry_links / RSVP
 //   functions removed; the couple add-ons own those (guest_households + guests, wedding_sites,
@@ -75,8 +77,10 @@ export type TemplateEvent = (typeof DEFAULT_TEMPLATE_EVENTS)[number];
 // Billing
 export const PLANS = ["basic", "pro", "payg"] as const;
 export type Plan = (typeof PLANS)[number];
-export const USAGE_KINDS = ["estimate_view", "sms"] as const; // vendor_usage.ref_id is text: quote uuid or outbox id
-export const WALLET_KINDS = ["topup", "estimate_view", "sms", "refund", "adjust", "promo", "lead_credit"] as const;
+export const USAGE_KINDS = ["estimate_view", "sms", "page_lead"] as const; // vendor_usage.ref_id is text: quote uuid, outbox id or lead uuid
+export const WALLET_KINDS = ["topup", "estimate_view", "sms", "refund", "adjust", "promo", "lead_credit", "page_lead"] as const;
+export const PAGE_LEAD_STATUSES = ["locked", "flagged", "new", "contacted", "converted", "spam"] as const;
+export type PageLeadStatus = (typeof PAGE_LEAD_STATUSES)[number];
 export type WalletKind = (typeof WALLET_KINDS)[number];
 export const HOLD_STATUSES = ["held", "captured", "released"] as const;
 export const HOLD_RELEASE_REASONS = ["withdrawn", "declined", "closed", "archived", "expired", "admin"] as const;

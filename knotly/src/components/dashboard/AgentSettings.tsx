@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/Button";
 import { fieldClasses, panelClasses } from "@/components/ui/fields";
 import { describeRule } from "@/lib/actions/vendor-agent-settings";
 import { CUSTOM_INSTRUCTIONS_MAX } from "@/agent/vendor/instructions";
+import { AGENT_NAME_MAX, talkLabel } from "@/lib/public-chat";
 import {
   removeRuleAction,
+  saveAgentIdentityAction,
   saveCustomInstructionsAction,
   saveRuleAction,
   setAutonomyAction,
@@ -37,17 +39,21 @@ export default function AgentSettings({
   stats,
   notes,
   notesUpdatedAt,
+  identity,
 }: {
   level: number;
   rules: RuleRow[];
   stats: Stats | null;
   notes: string | null;
   notesUpdatedAt: string | null;
+  identity: Identity;
 }) {
   const lvl = useAction();
   const rm = useAction();
   return (
     <div className="mt-6 space-y-6">
+      <AgentIdentity {...identity} />
+
       {stats && (
         <section className={`${panelClasses} p-6`}>
           <h2 className="text-base font-semibold">Last 30 days</h2>
@@ -125,6 +131,91 @@ export default function AgentSettings({
 
       <CustomInstructions saved={notes ?? ""} updatedAt={notesUpdatedAt} />
     </div>
+  );
+}
+
+type Identity = {
+  name: string | null;
+  enabled: boolean;
+  businessName: string;
+  publicPath: string | null;
+  chatsThisMonth: number;
+  leadsThisMonth: number;
+};
+
+/** The assistant's name couples see, and the "Talk to …" chat on the public page. */
+function AgentIdentity(p: Identity) {
+  const save = useAction();
+  const [name, setName] = useState(p.name ?? "");
+  const [enabled, setEnabled] = useState(p.enabled);
+  const [base, setBase] = useState({ name: p.name ?? "", enabled: p.enabled });
+  const changed = name.trim() !== base.name.trim() || enabled !== base.enabled;
+  const shown = name.trim() || null;
+
+  return (
+    <section className={`${panelClasses} p-6`}>
+      <h2 className="text-base font-semibold">Your assistant&apos;s name</h2>
+      <p className="mt-1 text-sm text-gray-600">
+        Couples see &ldquo;{talkLabel(shown, p.businessName)}&rdquo; on your public page and in Messages. Your assistant always says it&apos;s an
+        AI assistant for {p.businessName}.
+      </p>
+      <form
+        className="mt-3 space-y-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!changed) return;
+          save.run(
+            () => saveAgentIdentityAction({ name, enabled }),
+            () => setBase({ name: name.trim(), enabled }),
+            "Saved."
+          );
+        }}
+      >
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="block text-sm">
+            <span className="sr-only">Assistant name</span>
+            <input
+              className={`${fieldClasses} w-56`}
+              placeholder="e.g. Maya"
+              maxLength={AGENT_NAME_MAX}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+            Show chat on my public page
+          </label>
+          <Button type="submit" color="cyan" disabled={save.pending || !changed}>
+            {save.pending ? "Saving…" : "Save"}
+          </Button>
+        </div>
+        <p className="text-xs text-gray-500">
+          Each lead from the chat (a couple who sends their details) costs the standard lead fee from your balance.
+          {p.publicPath && (
+            <>
+              {" "}
+              <a href={p.publicPath} target="_blank" rel="noreferrer" className="text-cyan-700 underline">
+                See your public page
+              </a>
+            </>
+          )}
+        </p>
+        <p className="text-xs text-gray-600">
+          This month: {p.chatsThisMonth} chat{p.chatsThisMonth === 1 ? "" : "s"}, {p.leadsThisMonth} lead{p.leadsThisMonth === 1 ? "" : "s"}.
+        </p>
+        {save.error && (
+          <p role="alert" className="text-sm text-red-600">
+            {save.error}
+          </p>
+        )}
+        {save.notice && (
+          <p role="status" className="text-sm text-emerald-700">
+            {save.notice}
+          </p>
+        )}
+      </form>
+    </section>
   );
 }
 

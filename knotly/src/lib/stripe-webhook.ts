@@ -24,7 +24,11 @@ export async function handleStripeEvent(db: SupabaseClient, event: StripeEvent):
         p_intent: (o.payment_intent as string | null) ?? null,
       });
       if (error) console.error("[stripe] wallet credit failed", o.id, error.message);
-      return error ? "error" : "credited";
+      if (error) return "error";
+      // Leads from the vendor's page that waited for funds are paid for and unlocked now.
+      const { error: unlockError } = await db.rpc("unlock_page_leads", { p_vendor: meta.vendor_id });
+      if (unlockError) console.error("[stripe] unlock page leads", meta.vendor_id, unlockError.message);
+      return "credited";
     }
     const keys = (meta.keys ?? "").split(",").filter(Boolean);
     const project = meta.project_id || (o.client_reference_id as string | undefined);

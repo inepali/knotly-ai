@@ -7,6 +7,7 @@ import { mailCounts } from "@/lib/mail-threads";
 import { DraftReview, MarkRead, ReplyBox } from "@/components/inbox/ThreadActions";
 import EstimateCard from "@/components/inbox/EstimateCard";
 import { loadThreadEstimates, loadThreadUnlock, lockedReplyNotice, type VendorContact } from "@/lib/estimates";
+import { agentLabel } from "@/lib/public-chat";
 
 const AGENT = new Set(["couple_agent", "vendor_agent"]);
 
@@ -30,6 +31,8 @@ export default async function ThreadPage(props: PageProps<"/inbox/[threadId]">) 
   if (messages.length === 0) notFound(); // not theirs, or nothing visible yet
 
   const counterpart = messages[0].counterpart;
+  // The vendor's assistant speaks under the name the vendor gave it ("Maya · AI assistant for …").
+  const agentName = viewer.side === "couple" ? await vendorAgentName(sb, threadId) : null;
   const subject = messages.find((m) => m.status === "sent")?.subject ?? messages[0].subject;
 
   return (
@@ -69,8 +72,10 @@ export default async function ThreadPage(props: PageProps<"/inbox/[threadId]">) 
             >
               <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2 text-sm">
                 <span className="font-medium">
-                  {mine ? "You" : counterpart}
-                  {AGENT.has(m.sender) && <span className="font-normal text-gray-500"> · written with Knotly assistant</span>}
+                  {mine ? "You" : m.sender === "vendor_agent" && agentName ? agentLabel(agentName, counterpart) : counterpart}
+                  {AGENT.has(m.sender) && !(m.sender === "vendor_agent" && agentName && !mine) && (
+                    <span className="font-normal text-gray-500"> · written with Knotly assistant</span>
+                  )}
                   {draft && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">Draft — not sent</span>}
                   {m.isNew && <span className="ml-2 rounded-lg bg-cyan-500 font-semibold hover:bg-cyan-600 px-2 py-0.5 text-xs text-white">New</span>}
                 </span>
@@ -149,4 +154,11 @@ function VendorContactCard({ contact }: { contact: VendorContact }) {
       </ul>
     </section>
   );
+}
+
+async function vendorAgentName(sb: Awaited<ReturnType<typeof supabaseServer>>, threadId: string) {
+  const { data: t } = await sb.from("threads").select("vendor_id").eq("id", threadId).maybeSingle();
+  if (!t) return null;
+  const { data } = await sb.rpc("vendor_agent_name", { v: t.vendor_id });
+  return typeof data === "string" && data.trim() ? data.trim() : null;
 }
