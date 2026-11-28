@@ -71,10 +71,10 @@ export default function BusinessForm({
                 website: v.website.trim() || undefined,
               }),
             undefined,
-            (r) =>
-              "signupCreditCents" in r && r.signupCreditCents > 0
-                ? `Saved. ${signupCreditNotice(r.signupCreditCents)}`
-                : "Saved."
+            (r) => {
+              const credit = "signupCreditCents" in r ? (r.signupCreditCents ?? 0) : 0;
+              return credit > 0 ? `Saved. ${signupCreditNotice(credit)}` : "Saved.";
+            }
           );
         }}
       >
