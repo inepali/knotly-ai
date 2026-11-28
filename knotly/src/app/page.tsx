@@ -161,7 +161,7 @@ export default async function Home() {
                 {[
                   ["Leads that fit", "Only couples whose date is free on your calendar and whose budget fits your packages."],
                   ["An agent that works like you", "Replies, sends estimates and follows up, and asks you before anything outside your rules."],
-                  ["Pay your way", "Pay only when a couple opens your estimate, or choose a monthly plan with a public, search-friendly page."],
+                  ["Free to join, pay per lead", "Free signup and a free public page that shows up on Google. Pay $1 only when a couple opens your estimate, with $10 of credit to start."],
                 ].map(([t, b]) => (
                   <li key={t} className="rounded-xl bg-white p-4 ring-1 ring-gray-100">
                     <p className="font-semibold text-gray-900">{t}</p>

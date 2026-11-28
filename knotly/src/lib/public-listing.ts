@@ -6,17 +6,13 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { City } from "@/lib/listing";
 
 /**
- * Public pages are a monthly/yearly plan feature (vendors.listed_until, set by billing).
- * Off until billing ships: until then every published vendor is public, as before.
- * Set PUBLIC_PAGES_REQUIRE_PLAN=1 to enforce it.
+ * Every published vendor gets a free public page and shows in listings (pricing decision,
+ * Nov 2026: vendors pay per opened estimate, not for visibility). The old plan gate
+ * (vendors.listed_until, list_public_vendors' p_require_plan) stays in the database, unused,
+ * in case subscriptions come back.
  */
-export const REQUIRE_PLAN = process.env.PUBLIC_PAGES_REQUIRE_PLAN === "1";
-
-/** True when this vendor gets a public page and shows in listings. */
-export function isPublicVendor(v: { published: boolean | null; listed_until?: string | null }, now = new Date()) {
-  if (!v.published) return false;
-  if (!REQUIRE_PLAN) return true;
-  return !!v.listed_until && new Date(v.listed_until) > now;
+export function isPublicVendor(v: { published: boolean | null }) {
+  return !!v.published;
 }
 
 export type ListedVendor = {
@@ -35,7 +31,7 @@ export type ListedVendor = {
 
 /** Public vendors who serve a city (based there or within their service radius). Null = every city. */
 export const listedVendors = cache(async (metro: string | null): Promise<ListedVendor[]> => {
-  const { data, error } = await supabaseAdmin.rpc("list_public_vendors", { p_metro: metro, p_require_plan: REQUIRE_PLAN });
+  const { data, error } = await supabaseAdmin.rpc("list_public_vendors", { p_metro: metro, p_require_plan: false });
   if (error) {
     console.error("[listing] list_public_vendors", error.message);
     return [];

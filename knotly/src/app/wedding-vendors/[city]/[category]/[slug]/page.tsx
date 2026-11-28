@@ -32,20 +32,19 @@ type Row = {
   slug: string | null;
   service_radius_miles: number | null;
   published: boolean;
-  listed_until: string | null;
   metros: { name: string; state: string } | { name: string; state: string }[] | null;
   vendor_packages: Package[];
   vendor_addons: AddOn[];
   testimonials: { id: string; author_name: string; rating: number | null; body: string; verified: boolean; source: string | null }[];
 };
 
-// One lookup per request, shared by the metadata and the page. Public vendors only (published,
-// and on a monthly/yearly plan once PUBLIC_PAGES_REQUIRE_PLAN is on; see lib/public-listing).
+// One lookup per request, shared by the metadata and the page. Public vendors only: every
+// published vendor (see lib/public-listing).
 const getVendor = cache(async (slug: string) => {
   const { data } = await supabaseAdmin
     .from("vendors")
     .select(
-      "id, business_name, category, bio, metro_slug, website, slug, service_radius_miles, published, listed_until, metros(name, state), vendor_packages(id, name, description, price, inclusions), vendor_addons(id, name, description, price), testimonials(id, author_name, rating, body, verified, source)"
+      "id, business_name, category, bio, metro_slug, website, slug, service_radius_miles, published, metros(name, state), vendor_packages(id, name, description, price, inclusions), vendor_addons(id, name, description, price), testimonials(id, author_name, rating, body, verified, source)"
     )
     .eq("slug", slug)
     .eq("published", true)

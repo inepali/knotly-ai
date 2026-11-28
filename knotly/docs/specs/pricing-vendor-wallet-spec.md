@@ -143,7 +143,7 @@ The old `$10 minimum top-up` check is removed; reload amounts are checked in `cr
 8. ✅ Admin pricing page (`/admin/pricing`: default + per-metro overrides).
 9. SMS overage in the SMS sender (when SMS ships).
 10. ✅ Nightly job: hold release (`/api/cron/wallet-holds`, daily via `vercel.json`).
-11. Flip `PUBLIC_PAGES_REQUIRE_PLAN=false`; update pay-per-use banners in the portfolio dashboard; retire subscription UI.
+11. ✅ Public pages for every published vendor (plan gate removed from the app), portfolio and home page wording updated; no subscription screens existed.
 
 ## Tests
 - Signup credit: granted once after email (or phone) verification; same inbox, phone or business gets none; not granted before verification.
