@@ -157,3 +157,16 @@ extends the Phase 0 billing tables instead of adding a second ledger:
 - `vendor_credit_balance()` / `lead_credit_ledger` are no longer read by the app.
 - pgTAP: 060 now 100 assertions (auto-hold, KN402, status release). Vitest: wave skip case in
   `posting.test.ts`. Not run here; run `pnpm test` and `bash supabase/tests/run.sh`.
+
+## 2026-11-28: Vendor wallet, step 4 (opening an estimate unlocks contact + messages)
+- `20261128150000_estimate_unlock.sql`: `thread_estimate_opened(t)`, `thread_messaging_open(t)`
+  (posted-project threads need an opened estimate; couple-started inquiries are always open; false
+  for non-participants), `thread_vendor_contact(t)` (phone / email / website / Instagram: the
+  couple after opening an estimate, the vendor always).
+- App: `/api/threads/[id]/reply` returns 403 when messaging is locked (both sides), and
+  `/api/inquiries/[id]/send` refuses a couple's own draft there (vendor-agent drafts still go:
+  that's how estimates arrive). The thread page shows "Contact {vendor}" to the couple after an
+  open, and a notice instead of the reply box while locked. `loadThreadUnlock()` in
+  `src/lib/estimates.ts`. Website links render only for http(s) URLs.
+- pgTAP: 060 now 112 assertions. Vitest: `estimates.test.ts` (unlock loader), new
+  `api/threads/[id]/reply/route.test.ts`. Not run here; run `pnpm test`.

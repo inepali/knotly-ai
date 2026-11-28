@@ -59,3 +59,48 @@ export async function loadThreadEstimates(sb: SupabaseClient, side: Side, thread
     };
   });
 }
+
+// Opening an estimate (the paid moment) unlocks the vendor's contact details and, on a posted
+// project, personal messages. Conversations the couple started are always open for messages.
+export type VendorContact = {
+  vendorId: string;
+  businessName: string;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  instagram: string | null;
+};
+
+export const lockedReplyNotice = (side: Side) =>
+  side === "couple"
+    ? "Open the estimate to message this vendor and see their contact details."
+    : "You can message the couple once they open your estimate.";
+
+type ContactRow = {
+  vendor_id: string;
+  business_name: string;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  instagram: string | null;
+};
+
+/** Whether this viewer may send messages here, and the vendor's contact card if unlocked for them. */
+export async function loadThreadUnlock(sb: SupabaseClient, threadId: string) {
+  const [{ data: open }, { data: rows }] = await Promise.all([
+    sb.rpc("thread_messaging_open", { t: threadId }),
+    sb.rpc("thread_vendor_contact", { t: threadId }),
+  ]);
+  const row = (Array.isArray(rows) ? rows[0] : rows) as ContactRow | null | undefined;
+  const contact: VendorContact | null = row?.vendor_id
+    ? {
+        vendorId: row.vendor_id,
+        businessName: row.business_name,
+        phone: row.phone,
+        email: row.email,
+        website: row.website,
+        instagram: row.instagram,
+      }
+    : null;
+  return { messagingOpen: open === true, contact };
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mockSb } from "./actions/test-utils";
-import { isExpired, loadThreadEstimates } from "./estimates";
+import { isExpired, loadThreadEstimates, loadThreadUnlock, lockedReplyNotice } from "./estimates";
 
 const base = { status: "sent", valid_until: "2026-12-11", created_at: "2026-11-27T10:00:00Z" };
 const lines = [{ label: "Full Story package", amount: 4800 }];
@@ -32,5 +32,36 @@ describe("isExpired", () => {
     expect(isExpired({ status: "sent", validUntil: "2026-12-11" }, "2026-12-11")).toBe(false);
     expect(isExpired({ status: "sent", validUntil: "2026-12-11" }, "2026-12-12")).toBe(true);
     expect(isExpired({ status: "expired", validUntil: "2099-01-01" })).toBe(true);
+  });
+});
+
+describe("loadThreadUnlock", () => {
+  const card = { vendor_id: "v1", business_name: "Golden Hour", phone: "704-555-0101", email: "hi@gh.com", website: null, instagram: "goldenhour" };
+  const rpcSb = (open: unknown, contact: unknown) =>
+    ({
+      rpc: (name: string) =>
+        Promise.resolve({ data: name === "thread_messaging_open" ? open : contact, error: null }),
+    }) as unknown as Parameters<typeof loadThreadUnlock>[0];
+
+  it("returns the contact card once an estimate is opened", async () => {
+    expect(await loadThreadUnlock(rpcSb(true, [card]), "t1")).toEqual({
+      messagingOpen: true,
+      contact: { vendorId: "v1", businessName: "Golden Hour", phone: "704-555-0101", email: "hi@gh.com", website: null, instagram: "goldenhour" },
+    });
+  });
+
+  it("is locked with no contact before", async () => {
+    expect(await loadThreadUnlock(rpcSb(false, []), "t1")).toEqual({ messagingOpen: false, contact: null });
+  });
+
+  it("treats an error as locked", async () => {
+    expect(await loadThreadUnlock(rpcSb(null, null), "t1")).toEqual({ messagingOpen: false, contact: null });
+  });
+});
+
+describe("lockedReplyNotice", () => {
+  it("speaks to each side", () => {
+    expect(lockedReplyNotice("couple")).toMatch(/Open the estimate/);
+    expect(lockedReplyNotice("vendor")).toMatch(/once they open your estimate/);
   });
 });
