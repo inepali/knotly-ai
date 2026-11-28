@@ -400,4 +400,58 @@ begin
   return next is(st, '42501', 'vendors cannot call refund_wallet_payment');
 end $$;
 
+-- Step 6: Account page data and low-balance alerts.
+create function tap_tests.test_wallet_account() returns setof text language plpgsql as $$
+declare r record; n int;
+begin
+  perform tap_tests.login(tap_tests.id('c1'));
+  select * into r from wallet_summary();
+  perform tap_tests.logout();
+  return next is(r.balance_cents, 1000, 'summary: balance');
+  return next is(r.held_cents, 100, 'summary: $1 on hold for quote 81');
+  return next is(r.available_cents, 900, 'summary: available');
+  return next is(r.can_reload, false, 'summary: no reload at $10');
+  return next is(r.sms_used_this_month, 1, 'summary: texts this month');
+
+  perform tap_tests.login(tap_tests.id('a1'));
+  perform view_quote(tap_tests.id('81'));
+  perform tap_tests.logout();
+
+  perform tap_tests.login(tap_tests.id('c1'));
+  select * into r from wallet_activity() limit 1;
+  n := tap_tests.n('select 1 from wallet_activity(''reloads'')');
+  perform tap_tests.logout();
+  return next is(r.kind, 'estimate_view', 'activity: newest first');
+  return next is(r.amount_cents, -100, '... the $1 lead');
+  return next is(r.couple_first_name, 'Priya', '... couple first name only');
+  return next is(r.wedding_month, 'Oct 2027', '... and wedding month');
+  return next is(r.thread_id, tap_tests.id('71'), '... links to the conversation');
+  return next is(r.total_count, 2::bigint, 'activity: total count for paging');
+  return next is(n, 1, 'filter: reloads');
+
+  -- Another vendor sees none of it.
+  perform tap_tests.login(tap_tests.id('c2'));
+  return next is(tap_tests.n('select 1 from wallet_activity()'), 0, 'V2 sees none of V1''s activity');
+  perform tap_tests.logout();
+end $$;
+
+create function tap_tests.test_wallet_alerts() returns setof text language plpgsql as $$
+declare st text;
+begin
+  return next is(take_wallet_alert(tap_tests.id('c1')), 'low', '$9 available: low alert');
+  return next is(take_wallet_alert(tap_tests.id('c1')), null, '... once per 24 hours');
+  insert into wallet_transactions (vendor_id, kind, amount_cents, note) values (tap_tests.id('c1'), 'adjust', -850, 'test');
+  return next is(take_wallet_alert(tap_tests.id('c1')), 'empty', '$0.50 available: empty alert');
+  return next is(take_wallet_alert(tap_tests.id('c1')), null, '... once per 24 hours');
+  update wallet_alerts set sent_at = now() - interval '25 hours';
+  return next is(take_wallet_alert(tap_tests.id('c1')), 'empty', 'again after 24 hours');
+  return next is(take_wallet_alert(tap_tests.id('c2')), null, 'Basic vendors get no wallet alerts');
+
+  perform tap_tests.login(tap_tests.id('c1'));
+  st := tap_tests.sqlstate_of(format('select take_wallet_alert(%L)', tap_tests.id('c1')));
+  return next is(tap_tests.n('select 1 from wallet_alerts'), 0, 'alerts table is server-only');
+  perform tap_tests.logout();
+  return next is(st, '42501', 'vendors cannot call take_wallet_alert');
+end $$;
+
 select * from runtests('tap_tests'::name, '^test_');

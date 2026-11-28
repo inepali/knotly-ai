@@ -12,6 +12,8 @@ import { z } from "zod";
 import { after } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { runVendorAgent } from "@/agent/vendor/responder";
+import { notify } from "@/lib/email";
+import { sendWalletAlert } from "@/lib/wallet-alerts";
 import { Category } from "@/agent/shared";
 import { categoryLabel } from "@/lib/categories";
 import { waveSize, weightedShuffle } from "@/lib/matching";
@@ -245,6 +247,7 @@ export async function advanceWaves(projectId: string) {
         // days later. Skip them now and ask the next in line, so the couple isn't kept waiting.
         if (t.vendor_id && !(await canTakeLead(t.vendor_id))) {
           await db.from("threads").update({ status: "skipped" }).eq("id", t.id).eq("status", "queued");
+          await sendWalletAlert(db, t.vendor_id, notify); // "New leads are paused" (once a day)
           continue;
         }
         n--;

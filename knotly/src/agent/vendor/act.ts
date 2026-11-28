@@ -2,6 +2,7 @@
 import "server-only";
 import { supabaseAdmin as db } from "@/lib/supabase/admin";
 import { notify } from "@/lib/email";
+import { sendWalletAlert } from "@/lib/wallet-alerts";
 import { REASONS } from "./gate";
 import type { Decision } from "./decide";
 import type { VendorCtx } from "./context";
@@ -56,6 +57,8 @@ export async function act(
     if (error?.code === INSUFFICIENT_BALANCE) return "insufficient_balance";
     if (error || !q) throw new Error(`estimate not saved: ${error?.message ?? "no row"}`);
     payload.quoteId = q.id;
+    // The $1 hold lowered the available balance: maybe time for a low-balance email.
+    await sendWalletAlert(db, ctx.vendor.id, notify);
     // The couple sees the price when they open the estimate (that's when credits are charged, Lesson 17)
     body +=
       `\n\nI've prepared an estimate for you, valid until ${validUntil}. Tap "Review estimate" to see it. ` +

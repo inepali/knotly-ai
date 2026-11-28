@@ -43,7 +43,7 @@ export async function runVendorAgent(threadId: string, guidance?: string) {
         p?.email ?? "",
         "A new inquiry is waiting for you",
         "A couple sent you an inquiry. Reload your balance so your agent can reply.",
-        `${process.env.APP_URL}/vendor` // → the Account page once it exists (wallet step 6)
+        `${process.env.APP_URL}/vendor/dashboard/account`
       );
     }
     await db
