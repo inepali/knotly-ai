@@ -7,7 +7,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
 
-export type NavLink = { href: string; label: string; badge?: number; locked?: boolean; children?: NavLink[] };
+export type NavLink = { href: string; label: string; badge?: number; dot?: boolean; locked?: boolean; children?: NavLink[] };
 
 const isActive = (path: string, href: string) => path === href || path.startsWith(`${href}/`);
 const itemClass = (active: boolean, muted = false) =>
@@ -45,6 +45,7 @@ function Item({ l, path, nested = false }: { l: NavLink; path: string; nested?: 
         </>
       )}
       {!!l.badge && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">{l.badge}</span>}
+      {!l.badge && l.dot && <span aria-label="Needs attention" className="h-2 w-2 rounded-full bg-amber-500" />}
     </Link>
   );
 }

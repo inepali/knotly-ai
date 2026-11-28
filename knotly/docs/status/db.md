@@ -185,3 +185,20 @@ extends the Phase 0 billing tables instead of adding a second ledger:
 - Success/cancel URLs go to `/vendor/dashboard/account`, which arrives in step 6.
 - pgTAP: 060 now 121 assertions. Vitest: `wallet.test.ts`, reload body in `stripe.test.ts`,
   two webhook cases. Not run here; run `pnpm test`.
+
+## 2026-11-28: Vendor wallet, step 6 (Account page + low-balance alerts)
+- `20261128170000_wallet_account.sql`: `wallet_summary()` (signed-in vendor: balance, held,
+  available, fee, reload rules, texts this month), `wallet_activity(kind, limit, offset)` (their
+  ledger with the couple's first name + wedding month on lead rows, `total_count` for paging),
+  `wallet_alerts` + `take_wallet_alert(v)` ('low' under $10, 'empty' under the $1 fee, once per
+  kind per 24h; Pay as you go only; server-only).
+- App: `/vendor/dashboard/account` (balance card, Reload form → `startWalletReloadAction`,
+  `?reloaded` / `?canceled` notices, texts this month, filtered + paged activity with links to the
+  conversation and Stripe receipts via `/api/wallet/receipt/[id]`). Sidebar "Account" with an
+  amber dot when under the threshold (`NavLink.dot`).
+- Alerts email right after the balance drops (no outbox sender or cron needed):
+  `sendWalletAlert()` after an estimate's hold (`act.ts`), after a couple opens an estimate (new
+  `openEstimateAction` server action; `EstimateCard` no longer calls `view_quote` from the
+  browser), and when a wave skips the vendor. No push yet (the app has no web push).
+- pgTAP: 060 now 142 assertions. Vitest: `wallet-alerts.test.ts`, `wallet-view.test.ts`, alert
+  case in `posting.test.ts`. Not run here; run `pnpm test`.

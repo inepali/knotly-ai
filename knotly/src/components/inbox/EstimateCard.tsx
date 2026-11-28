@@ -1,9 +1,10 @@
 // src/components/inbox/EstimateCard.tsx — an estimate inside a conversation. The couple presses
-// "Review estimate" to see the price (view_quote: the vendor is charged once, on the first open).
+// "Review estimate" to see the price (openEstimateAction → view_quote: the vendor is charged once,
+// on the first open; that also unlocks their contact card and messages).
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabaseBrowser } from "@/lib/supabase/browser";
+import { openEstimateAction } from "@/app/inbox/actions";
 import { isExpired, type Estimate, type EstimateLine } from "@/lib/estimates";
 
 const usd = (n: number) => `${n < 0 ? "−" : ""}$${Math.abs(n).toLocaleString("en-US")}`;
@@ -42,12 +43,11 @@ export default function EstimateCard({ estimate, side }: { estimate: Estimate; s
   async function open() {
     setBusy(true);
     setError("");
-    const { data, error: e } = await supabaseBrowser().rpc("view_quote", { p_quote: estimate.id });
+    const r = await openEstimateAction(estimate.id);
     setBusy(false);
-    const row = (Array.isArray(data) ? data[0] : data) as { total: number; line_items: EstimateLine[] } | undefined;
-    if (e || !row) return setError("We couldn't open this estimate. Please try again.");
-    setShown({ total: row.total, lines: row.line_items });
-    router.refresh(); // Estimates page and budget now show the price too
+    if (!r.ok) return setError(r.error);
+    setShown({ total: r.total, lines: r.lines });
+    router.refresh(); // price, the vendor's contact card and the reply box now show
   }
 
   return (

@@ -121,3 +121,16 @@ async function postCheckoutSession(body: URLSearchParams): Promise<SessionResult
   }
   return { ok: true, url: json.url };
 }
+
+/** The Stripe-hosted receipt for a payment (shows tax). Null when Stripe isn't set up or has none. */
+export async function fetchReceiptUrl(paymentIntent: string): Promise<string | null> {
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key || !/^pi_[A-Za-z0-9_]+$/.test(paymentIntent)) return null;
+  const res = await fetch(`${API}/payment_intents/${paymentIntent}?expand[]=latest_charge`, {
+    headers: { Authorization: `Bearer ${key}` },
+  });
+  const json = (await res.json().catch(() => ({}))) as { latest_charge?: { receipt_url?: string } | string | null };
+  const charge = json.latest_charge;
+  const url = typeof charge === "object" && charge ? charge.receipt_url : undefined;
+  return res.ok && url?.startsWith("https://") ? url : null;
+}

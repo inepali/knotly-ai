@@ -4,6 +4,7 @@ const h = vi.hoisted(() => ({
   admin: null as unknown,
   after: [] as (() => unknown)[],
   agent: vi.fn<(id: string) => Promise<void>>(async () => {}),
+  alert: vi.fn<(db: unknown, vendorId: string, send: unknown) => Promise<null>>(async () => null),
 }));
 vi.mock("@/lib/supabase/admin", () => ({
   get supabaseAdmin() {
@@ -12,6 +13,8 @@ vi.mock("@/lib/supabase/admin", () => ({
 }));
 vi.mock("next/server", () => ({ after: (fn: () => unknown) => void h.after.push(fn) }));
 vi.mock("@/agent/vendor/responder", () => ({ runVendorAgent: h.agent }));
+vi.mock("@/lib/email", () => ({ notify: vi.fn(async () => ({})) }));
+vi.mock("@/lib/wallet-alerts", () => ({ sendWalletAlert: h.alert }));
 
 import { advanceWaves, estimateProgress, postProject, projectPostBody, requestMoreEstimates } from "./posting";
 import { mockSb } from "./test-utils";
@@ -252,6 +255,7 @@ describe("advanceWaves and the lead fee", () => {
     expect(await advanceWaves("p1")).toEqual({ asked: 1 });
     expect(h.agent.mock.calls.map((c) => c[0])).toEqual(["t2"]);
     expect(admin.called("threads", "update").map((c) => c.args[0])).toContainEqual({ status: "skipped" });
+    expect(h.alert).toHaveBeenCalledWith(expect.anything(), "broke", expect.anything());
   });
 });
 

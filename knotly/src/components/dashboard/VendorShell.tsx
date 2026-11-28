@@ -6,15 +6,18 @@ import AccountBlock from "@/components/dashboard/AccountBlock";
 import { removeAvatarAction, signOutAction, uploadAvatarAction } from "@/app/vendor/dashboard/actions";
 import { avatarUrl } from "@/lib/actions/avatar";
 import { requireVendor } from "@/lib/vendor-session";
+import { needsReload, type WalletSummary } from "@/lib/wallet-view";
 
 export default async function VendorShell({ children }: { children: React.ReactNode }) {
   const { sb, userId } = await requireVendor();
-  const [{ count }, { data: profile }, { data: vendor }] = await Promise.all([
+  const [{ count }, { data: profile }, { data: vendor }, { data: wallet }] = await Promise.all([
     // Decisions waiting on the vendor (RLS: their own).
     sb.from("escalations").select("id", { count: "exact", head: true }).neq("status", "resolved"),
     // Older databases may not have the avatar column yet; fall back to no photo rather than failing.
     sb.from("profiles").select("full_name, email, avatar_path").eq("id", userId).maybeSingle(),
     sb.from("vendors").select("business_name").eq("id", userId).maybeSingle(),
+    // Low-balance dot on Account (Pay as you go under the reload threshold).
+    sb.rpc("wallet_summary"),
   ]);
   const photo = await avatarUrl(sb, profile?.avatar_path);
 
@@ -27,6 +30,7 @@ export default async function VendorShell({ children }: { children: React.ReactN
     { href: "/vendor/dashboard/knowledge", label: "Knowledge" },
     { href: "/vendor/dashboard/agent", label: "Agent Settings" },
     { href: "/vendor/dashboard/availability", label: "Availability" },
+    { href: "/vendor/dashboard/account", label: "Account", dot: needsReload(((wallet ?? []) as WalletSummary[])[0]) },
   ];
   return (
     <DashboardShell
