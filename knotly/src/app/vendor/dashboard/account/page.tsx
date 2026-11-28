@@ -30,18 +30,31 @@ export default async function AccountPage(props: PageProps<"/vendor/dashboard/ac
   const kind = filterKey(one(sp.kind));
   const page = pageNumber(one(sp.page));
 
-  const { sb } = await requireVendor();
-  const [{ data: summaryRows }, { data: activityRows }] = await Promise.all([
+  const { sb, userId } = await requireVendor();
+  const [{ data: summaryRows, error: summaryError }, { data: activityRows, error: activityError }, { data: business }] = await Promise.all([
     sb.rpc("wallet_summary"),
     sb.rpc("wallet_activity", { p_kind: kind || null, p_limit: ACTIVITY_PAGE_SIZE, p_offset: (page - 1) * ACTIVITY_PAGE_SIZE }),
+    sb.from("vendors").select("id").eq("id", userId).maybeSingle(),
   ]);
+  // A failed load is not "no business yet": say so, and log why (usually wallet migrations not applied).
+  if (summaryError || activityError) {
+    console.error("[account] wallet load failed", (summaryError ?? activityError)?.message);
+    return (
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Account</h1>
+        <p role="alert" className="mt-2 text-sm text-red-700">
+          We couldn&apos;t load your balance right now. Please refresh in a moment.
+        </p>
+      </div>
+    );
+  }
   const s = ((summaryRows ?? []) as WalletSummary[])[0];
   const rows = (activityRows ?? []) as ActivityRow[];
   const total = rows[0]?.total_count ?? 0;
   const pages = Math.max(1, Math.ceil(total / ACTIVITY_PAGE_SIZE));
   const href = (k: string, p = 1) => `/vendor/dashboard/account?${new URLSearchParams({ ...(k ? { kind: k } : {}), ...(p > 1 ? { page: String(p) } : {}) })}`;
 
-  if (!s) {
+  if (!s || !business) {
     return (
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Account</h1>
