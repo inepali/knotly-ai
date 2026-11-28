@@ -322,4 +322,55 @@ begin
   return next is(st, '42501', 'anon cannot report spam');
 end $$;
 
+-- Step 4: opening an estimate unlocks the vendor's contact details and, on posted projects, messages.
+create function tap_tests.test_estimate_unlock() returns setof text language plpgsql as $$
+declare v int; e text;
+begin
+  update vendors set phone = '704-555-0101', website = 'https://example.com' where id = tap_tests.id('c1');
+  update threads set origin = 'post' where id = tap_tests.id('71');
+
+  -- Before opening: no contact for the couple, no messages on a posted project.
+  perform tap_tests.login(tap_tests.id('a1'));
+  v := tap_tests.n(format('select 1 from thread_vendor_contact(%L)', tap_tests.id('71')));
+  return next is(v, 0, 'couple sees no contact before opening an estimate');
+  return next is(thread_messaging_open(tap_tests.id('71')), false, 'posted project: messages locked before opening');
+  perform tap_tests.logout();
+
+  perform tap_tests.login(tap_tests.id('c1'));
+  return next is(thread_messaging_open(tap_tests.id('71')), false, '... for the vendor too');
+  v := tap_tests.n(format('select 1 from thread_vendor_contact(%L)', tap_tests.id('71')));
+  return next is(v, 1, 'the vendor always sees their own contact card');
+  perform tap_tests.logout();
+
+  -- The couple opens the estimate (charged once): unlocked.
+  perform tap_tests.login(tap_tests.id('a1'));
+  perform view_quote(tap_tests.id('81'));
+  select c.email into e from thread_vendor_contact(tap_tests.id('71')) c;
+  return next is(e, 'vendor-1@test.invalid', 'couple sees the vendor''s email after opening');
+  return next is((select c.phone from thread_vendor_contact(tap_tests.id('71')) c), '704-555-0101', '... and phone');
+  return next is(thread_messaging_open(tap_tests.id('71')), true, 'messages open after opening');
+  perform tap_tests.logout();
+
+  -- Another couple learns nothing.
+  perform tap_tests.login(tap_tests.id('a2'));
+  v := tap_tests.n(format('select 1 from thread_vendor_contact(%L)', tap_tests.id('71')));
+  return next is(v, 0, 'another couple sees no contact');
+  return next is(thread_messaging_open(tap_tests.id('71')), false, '... and no messaging');
+  perform tap_tests.logout();
+
+  perform tap_tests.login_anon();
+  return next is(tap_tests.sqlstate_of(format('select thread_vendor_contact(%L)', tap_tests.id('71'))), '42501', 'anon cannot ask');
+  perform tap_tests.logout();
+end $$;
+
+create function tap_tests.test_estimate_unlock_inquiry() returns setof text language plpgsql as $$
+begin
+  -- A conversation the couple started is open from the start; contact still waits for an open.
+  perform tap_tests.login(tap_tests.id('a1'));
+  return next is(thread_messaging_open(tap_tests.id('71')), true, 'inquiry: messages open before any estimate is opened');
+  return next is(tap_tests.n(format('select 1 from thread_vendor_contact(%L)', tap_tests.id('71'))), 0,
+                 'inquiry: contact still waits for an opened estimate');
+  perform tap_tests.logout();
+end $$;
+
 select * from runtests('tap_tests'::name, '^test_');

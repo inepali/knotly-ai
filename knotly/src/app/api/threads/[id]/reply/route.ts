@@ -9,6 +9,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { sendMessageEmail } from "@/lib/email";
 import { fail } from "@/lib/auth";
 import { runVendorAgent } from "@/agent/vendor/responder";
+import { lockedReplyNotice } from "@/lib/estimates";
 
 export const maxDuration = 60;
 
@@ -44,6 +45,11 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/threads/[id
 
   const side = thread.vendor_id === user.id ? "vendor" : thread.couple_projects?.couple_id === user.id ? "couple" : null;
   if (!side) return fail("Not found.", 404);
+
+  // On a posted project, personal messages unlock when the couple opens an estimate (the paid
+  // moment). Conversations the couple started are always open.
+  const { data: messagingOpen } = await sb.rpc("thread_messaging_open", { t: id });
+  if (messagingOpen !== true) return fail(lockedReplyNotice(side), 403);
 
   const { data: last } = await supabaseAdmin
     .from("messages")

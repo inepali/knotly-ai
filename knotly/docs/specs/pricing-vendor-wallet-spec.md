@@ -136,7 +136,7 @@ The old `$10 minimum top-up` check is removed; reload amounts are checked in `cr
 1. ✅ Tables, `pricing_config`, core functions + pgTAP tests.
 2. ✅ Signup credit after email verification (phone once Twilio is set up).
 3. ✅ Hold on submit (quotes trigger, KN402 when unfunded); skip unfunded vendors in matching and waves.
-4. Couple's **View estimate** wired to the charge (already via `view_quote`); reveal contact.
+4. ✅ Couple's **View estimate** charges (via `view_quote`) and unlocks the vendor's contact card and, on posted projects, messages.
 5. Stripe reload + webhook (Stripe Tax on).
 6. Account page, nav dot, low-balance alerts.
 7. Spam reports: vendor button, admin queue, auto-credit on ban.

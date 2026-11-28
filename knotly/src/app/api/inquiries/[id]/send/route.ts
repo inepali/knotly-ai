@@ -8,6 +8,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { sendInquiryEmail, sendMessageEmail } from "@/lib/email";
 import { runVendorAgent } from "@/agent/vendor/responder";
+import { lockedReplyNotice } from "@/lib/estimates";
 import { z } from "zod";
 
 // Optional edits made while reviewing the draft.
@@ -52,6 +53,14 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/inquiries/[
   // Only the side that owns the draft may send it.
   const allowed = fromVendor ? thread.vendor_id === user.id : thread.couple_projects?.couple_id === user.id;
   if (!allowed) return Response.json({ ok: false, error: "Not found." }, { status: 404 });
+
+  // A couple's own message on a posted project waits until they've opened an estimate
+  // (the vendor agent's drafts are how estimates arrive, so those always go).
+  if (!fromVendor) {
+    const { data: messagingOpen } = await sb.rpc("thread_messaging_open", { t: msg.thread_id });
+    if (messagingOpen !== true)
+      return Response.json({ ok: false, error: lockedReplyNotice("couple") }, { status: 403 });
+  }
 
   // 2. Claim it: flip status only if still a draft (stops double-click double-sends).
   // From here the message is in the other side's Knotly inbox and can't be un-sent.

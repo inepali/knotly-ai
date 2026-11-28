@@ -6,7 +6,7 @@ import MailShell from "@/components/inbox/MailShell";
 import { mailCounts } from "@/lib/mail-threads";
 import { DraftReview, MarkRead, ReplyBox } from "@/components/inbox/ThreadActions";
 import EstimateCard from "@/components/inbox/EstimateCard";
-import { loadThreadEstimates } from "@/lib/estimates";
+import { loadThreadEstimates, loadThreadUnlock, lockedReplyNotice, type VendorContact } from "@/lib/estimates";
 
 const AGENT = new Set(["couple_agent", "vendor_agent"]);
 
@@ -17,10 +17,11 @@ export default async function ThreadPage(props: PageProps<"/inbox/[threadId]">) 
   const viewer = await getViewer(sb);
   if (!viewer) redirect("/signin");
 
-  const [messages, all, estimates] = await Promise.all([
+  const [messages, all, estimates, unlock] = await Promise.all([
     loadThread(sb, viewer.side, threadId),
     loadMailbox(sb, viewer.side),
     loadThreadEstimates(sb, viewer.side, threadId),
+    loadThreadUnlock(sb, threadId),
   ]);
   const estimateById = new Map(estimates.map((e) => [e.id, e]));
   // Estimates not attached to any message still get shown, after the conversation.
@@ -36,6 +37,7 @@ export default async function ThreadPage(props: PageProps<"/inbox/[threadId]">) 
       <MarkRead threadId={threadId} hasNew={messages.some((m) => m.isNew)} />
       <h1 className="text-xl font-semibold">{subject ?? "Conversation"}</h1>
       <p className="mb-4 text-sm text-gray-500">With {counterpart}</p>
+      {viewer.side === "couple" && unlock.contact && <VendorContactCard contact={unlock.contact} />}
 
       <ol className="space-y-3">
         {messages.map((m) => {
@@ -89,11 +91,62 @@ export default async function ThreadPage(props: PageProps<"/inbox/[threadId]">) 
         <EstimateCard key={e.id} estimate={e} side={viewer.side} />
       ))}
 
-      {messages.some((m) => m.status === "sent") && (
-        <div className="mt-6">
-          <ReplyBox threadId={threadId} to={counterpart} />
-        </div>
-      )}
+      {messages.some((m) => m.status === "sent") &&
+        (unlock.messagingOpen ? (
+          <div className="mt-6">
+            <ReplyBox threadId={threadId} to={counterpart} />
+          </div>
+        ) : (
+          <p className="mt-6 rounded-xl border border-dashed border-gray-300 p-4 text-sm text-gray-600">
+            {lockedReplyNotice(viewer.side)}
+          </p>
+        ))}
     </MailShell>
+  );
+}
+
+// Shown to the couple once they've opened one of this vendor's estimates.
+function VendorContactCard({ contact }: { contact: VendorContact }) {
+  // Only http(s) links: the stored website is any URL the vendor typed (never javascript:).
+  const site = contact.website && /^https?:\/\//i.test(contact.website) ? contact.website : null;
+  const web = site?.replace(/^https?:\/\//i, "").replace(/\/$/, "");
+  const ig = contact.instagram?.replace(/^@/, "");
+  return (
+    <section aria-label={`Contact ${contact.businessName}`} className="mb-4 rounded-xl border border-gray-200 bg-white p-4 text-sm">
+      <p className="mb-2 font-medium text-gray-900">Contact {contact.businessName}</p>
+      <ul className="space-y-1 text-gray-700">
+        {contact.phone && (
+          <li>
+            Phone: <a className="text-cyan-700 underline" href={`tel:${contact.phone.replace(/[^\d+]/g, "")}`}>{contact.phone}</a>
+          </li>
+        )}
+        {contact.email && (
+          <li>
+            Email: <a className="text-cyan-700 underline" href={`mailto:${contact.email}`}>{contact.email}</a>
+          </li>
+        )}
+        {site && web && (
+          <li>
+            Website:{" "}
+            <a className="text-cyan-700 underline" href={site} target="_blank" rel="noopener noreferrer nofollow">
+              {web}
+            </a>
+          </li>
+        )}
+        {ig && (
+          <li>
+            Instagram:{" "}
+            <a className="text-cyan-700 underline" href={`https://instagram.com/${encodeURIComponent(ig)}`} target="_blank" rel="noopener noreferrer nofollow">
+              @{ig}
+            </a>
+          </li>
+        )}
+        <li>
+          <a className="text-cyan-700 underline" href={`/vendors/${contact.vendorId}`}>
+            See their profile and portfolio
+          </a>
+        </li>
+      </ul>
+    </section>
   );
 }
