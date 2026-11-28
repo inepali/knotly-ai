@@ -21,14 +21,22 @@ export default function EscalationCard({
   const [mode, setMode] = useState<"view" | "edit" | "guide">("view");
   const [text, setText] = useState(esc.decision.message);
   const [done, setDone] = useState("");
+  const [error, setError] = useState("");
 
   async function resolve(body: object, label: string) {
+    setError("");
     const res = await fetch(`/api/escalations/${esc.id}`, {
       method: "POST",
       body: JSON.stringify(body),
     });
-    setDone(res.ok ? label : "Something went wrong");
-    if (res.ok) router.refresh(); // update the Needs You count
+    if (!res.ok) {
+      // e.g. 402: not enough balance for the lead fee; the card stays so they can retry
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(j.error ?? "Something went wrong");
+      return;
+    }
+    setDone(label);
+    router.refresh(); // update the Needs You count
   }
   if (done)
     return (
@@ -75,6 +83,11 @@ export default function EscalationCard({
           />
         )}
       </div>
+      {error && (
+        <p role="alert" className="text-sm text-red-700">
+          {error}
+        </p>
+      )}
       <div className="flex flex-wrap gap-2 text-sm">
         {mode === "view" && (
           <>

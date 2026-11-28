@@ -89,6 +89,8 @@ insert into documents (id, project_id, storage_path, name) values
   (tap_tests.id('91'), tap_tests.id('b1'), tap_tests.id('b1') || '/venue.pdf', 'venue.pdf'),
   (tap_tests.id('92'), tap_tests.id('b1'), tap_tests.id('b1') || '/budget.pdf', 'budget.pdf');
 
+-- V1's $10 comes first: sending an estimate holds the $1 lead fee (20261128140000_estimate_holds.sql).
+insert into wallet_transactions (vendor_id, kind, amount_cents, stripe_ref) values (tap_tests.id('c1'), 'topup', 1000, 'tap_test_topup');
 -- A <-> V1: thread, estimate, held booking, contract, assignment, shared document
 insert into threads (id, project_id, vendor_id) values (tap_tests.id('71'), tap_tests.id('b1'), tap_tests.id('c1'));
 insert into quotes (id, thread_id, package_id, line_items, total, valid_until) values
@@ -109,5 +111,4 @@ insert into outbox (to_profile, channel, template, payload) values
 insert into contract_templates (vendor_id, body) values (tap_tests.id('c1'), 'Body {{couple_names}}');
 insert into message_templates (vendor_id, event, channel, body) values (tap_tests.id('c1'), 'hold_confirmed', 'email', 'Mine');
 insert into vendor_tasks (vendor_id, title) values (tap_tests.id('c1'), 'Call Priya & Sam back');
-insert into wallet_transactions (vendor_id, kind, amount_cents, stripe_ref) values (tap_tests.id('c1'), 'topup', 1000, 'tap_test_topup');
 insert into vendor_usage (vendor_id, kind, ref_id, amount_cents) values (tap_tests.id('c1'), 'sms', 'tap-1', 0);

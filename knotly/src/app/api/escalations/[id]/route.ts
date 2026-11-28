@@ -64,11 +64,21 @@ export async function POST(
 
   switch (body.action) {
     case "approve": // the human's yes replaces the gate
-      await act(decision, ctx, priceQuote(decision, ctx));
+    case "edit": {
+      const message = body.action === "edit" ? body.message : undefined;
+      if ((await act(decision, ctx, priceQuote(decision, ctx), message)) === "insufficient_balance") {
+        // Nothing was sent: put it back in Needs You so they can approve after reloading.
+        await db
+          .from("escalations")
+          .update({ status: "open", resolution: null, resolved_at: null })
+          .eq("id", id);
+        return Response.json(
+          { ok: false, error: "Your balance can't cover the $1 lead fee. Reload, then approve again." },
+          { status: 402 }
+        );
+      }
       break;
-    case "edit":
-      await act(decision, ctx, priceQuote(decision, ctx), body.message);
-      break;
+    }
     case "guide": // "offer 6 hours at $3,600 instead" -> agent rewrites, gate checks again
       after(() => runVendorAgent(esc.thread_id, body.guidance));
       break;

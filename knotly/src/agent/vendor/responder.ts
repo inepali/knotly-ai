@@ -11,11 +11,11 @@ export async function runVendorAgent(threadId: string, guidance?: string) {
   const ctx = await loadVendorCtx(threadId);
   if (!ctx || ctx.paused) return;
 
-  // No credits: don't process. Holding reply to the couple, nudge to the vendor.
-  const { data: balance } = await db.rpc("vendor_credit_balance", {
-    v: ctx.vendor.id,
-  });
-  if ((balance ?? 0) <= 0) {
+  // Pay as you go and can't cover the $1 lead fee: don't process. Holding reply to the couple,
+  // nudge to the vendor. (Basic/Pro always can. An RPC error lets it run: the estimate still
+  // needs the fee, see act().)
+  const { data: canTake } = await db.rpc("vendor_can_take_lead", { v: ctx.vendor.id });
+  if (canTake === false) {
     const { data: t } = await db
       .from("threads")
       .select("status")
@@ -42,8 +42,8 @@ export async function runVendorAgent(threadId: string, guidance?: string) {
       await notify(
         p?.email ?? "",
         "A new inquiry is waiting for you",
-        "A couple sent you an inquiry. Add credits so your agent can reply.",
-        `${process.env.APP_URL}/vendor`
+        "A couple sent you an inquiry. Reload your balance so your agent can reply.",
+        `${process.env.APP_URL}/vendor` // → the Account page once it exists (wallet step 6)
       );
     }
     await db
@@ -65,14 +65,21 @@ export async function runVendorAgent(threadId: string, guidance?: string) {
   const priced = priceQuote(decision, ctx);
   const result = gate(decision, ctx, priced);
 
-  if (result.pass) await act(decision, ctx, priced);
-  else await escalate(decision, ctx, priced, result.violations);
+  let outcome = result.pass ? "sent" : "escalated";
+  if (result.pass) {
+    // The balance can drop between the check above and the estimate (another lead, a text):
+    // then the vendor approves it after reloading.
+    if ((await act(decision, ctx, priced)) === "insufficient_balance") {
+      await escalate(decision, ctx, priced, ["insufficient_balance"]);
+      outcome = "escalated";
+    }
+  } else await escalate(decision, ctx, priced, result.violations);
 
   await db.from("agent_audit_log").insert({
     thread_id: threadId,
     agent: "vendor_agent",
     decision,
     gate: result,
-    outcome: result.pass ? "sent" : "escalated",
+    outcome,
   });
 }

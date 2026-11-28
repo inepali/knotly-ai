@@ -41,6 +41,7 @@ type NeedRow = { category: string; budget: number | null; estimate_cap: number; 
 
 type PostThread = {
   id: string;
+  vendor_id?: string;
   status: string;
   queue_rank: number | null;
   vendors: { category: string } | null;
@@ -184,6 +185,13 @@ export async function requestMoreEstimates(sb: Sb, userId: string, input: unknow
   return ok({ category: p.data.category, cap });
 }
 
+/** Pay as you go needs the $1 lead fee available; Basic/Pro always can. Unknown (RPC error) → yes:
+ * the estimate itself still can't be created without the fee (quotes trigger). */
+async function canTakeLead(vendorId: string) {
+  const { data } = await supabaseAdmin.rpc("vendor_can_take_lead", { v: vendorId });
+  return data !== false;
+}
+
 /** Per-category counts for a project, read with the service role (the couple can't see queued vendors). */
 async function loadCategoryState(projectId: string) {
   const db = supabaseAdmin;
@@ -191,7 +199,7 @@ async function loadCategoryState(projectId: string) {
     db.from("project_needs").select("category, budget, estimate_cap, service_hours").eq("project_id", projectId),
     db
       .from("threads")
-      .select("id, status, queue_rank, vendors(category), quotes(id)")
+      .select("id, vendor_id, status, queue_rank, vendors(category), quotes(id)")
       .eq("project_id", projectId)
       .eq("origin", "post"),
   ]);
@@ -230,8 +238,16 @@ export async function advanceWaves(projectId: string) {
     const claimed: { id: string; need: NeedRow }[] = [];
 
     for (const s of state) {
-      const n = waveSize(s.need.estimate_cap, s.estimates, s.inFlight, s.queued.length);
-      for (const t of s.queued.slice(0, n)) {
+      let n = waveSize(s.need.estimate_cap, s.estimates, s.inFlight, s.queued.length);
+      for (const t of s.queued) {
+        if (n <= 0) break;
+        // Matching already skips vendors who can't cover the $1 lead fee, but a wave can come
+        // days later. Skip them now and ask the next in line, so the couple isn't kept waiting.
+        if (t.vendor_id && !(await canTakeLead(t.vendor_id))) {
+          await db.from("threads").update({ status: "skipped" }).eq("id", t.id).eq("status", "queued");
+          continue;
+        }
+        n--;
         const { data } = await db
           .from("threads")
           .update({ status: "open" })
