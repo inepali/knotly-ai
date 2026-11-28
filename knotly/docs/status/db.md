@@ -214,3 +214,13 @@ extends the Phase 0 billing tables instead of adding a second ledger:
   credited vendor). `src/lib/admin-session.ts` guards it (`profiles.role = 'admin'`, set by hand).
 - No admin navigation yet: go to `/admin/spam-reports` directly.
 - pgTAP: 060 now 149 assertions. Vitest: `spam.test.ts`. Not run here; run `pnpm test`.
+
+## 2026-11-28: Vendor wallet, step 8 (admin pricing)
+- `20261128190000_pricing_admin.sql`: `pricing_config.updated_by`. **`credit_wallet()` no longer
+  checks the paid amount against the current step/max** (only > 0 and ≤ $1,000): an admin may
+  change them while a vendor is in Checkout, and a paid reload must still credit. Steps are
+  checked when the session is created (`startWalletReload`).
+- App: `/admin/pricing` (default row + per-metro overrides; add a metro, edit, "Use default
+  prices" removes the override), `/admin` index. `src/lib/actions/pricing.ts` validates like the
+  table checks and caps the largest reload at $1,000.
+- pgTAP: 060 now 150 assertions (reload case updated). Vitest: `pricing.test.ts`. Not run here.

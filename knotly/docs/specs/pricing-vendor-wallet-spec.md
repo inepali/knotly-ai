@@ -140,7 +140,7 @@ The old `$10 minimum top-up` check is removed; reload amounts are checked in `cr
 5. ✅ Stripe reload + webhook (Stripe Tax on; refunds take back the pre-tax share).
 6. ✅ Account page, nav dot, low-balance alerts (email; push when the app has web push).
 7. ✅ Spam reports: vendor button (Account activity), admin queue at `/admin/spam-reports`, auto-credit on ban.
-8. Admin pricing page.
+8. ✅ Admin pricing page (`/admin/pricing`: default + per-metro overrides).
 9. SMS overage in the SMS sender (when SMS ships).
 10. Nightly jobs: 30-day hold release.
 11. Flip `PUBLIC_PAGES_REQUIRE_PLAN=false`; update pay-per-use banners in the portfolio dashboard; retire subscription UI.

@@ -170,10 +170,13 @@ begin
   return next is(credit_wallet(tap_tests.id('c1'), 4000, 'cs_test_1'), false, '... a repeat webhook credits nothing');
   return next is(wallet_balance(tap_tests.id('c1')), 4999, 'balance includes the reload once');
 
-  st := tap_tests.sqlstate_of(format('select credit_wallet(%L, 1500, ''cs_test_2'')', tap_tests.id('c1')));
-  return next is(st, 'P0001', 'not a $20 step is refused');
-  st := tap_tests.sqlstate_of(format('select credit_wallet(%L, 12000, ''cs_test_3'')', tap_tests.id('c1')));
-  return next is(st, 'P0001', 'more than $100 is refused');
+  -- Step 8: steps and the max are checked when checkout starts (startWalletReload); a PAID session
+  -- is credited even if an admin changed the step meanwhile. Only nonsense amounts are refused.
+  return next is(credit_wallet(tap_tests.id('c1'), 2500, 'cs_test_2'), true, 'paid amount credited after a step change');
+  st := tap_tests.sqlstate_of(format('select credit_wallet(%L, 0, ''cs_test_3'')', tap_tests.id('c1')));
+  return next is(st, 'P0001', 'zero refused');
+  st := tap_tests.sqlstate_of(format('select credit_wallet(%L, 100001, ''cs_test_4'')', tap_tests.id('c1')));
+  return next is(st, 'P0001', 'over the $1,000 sanity cap refused');
 end $$;
 
 create function tap_tests.test_wallet_admin_adjust() returns setof text language plpgsql as $$
