@@ -5,6 +5,7 @@ import "server-only";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { supabaseServer } from "@/lib/supabase/server";
 import { CHAT_COOKIE_PREFIX, CLAIM_DAYS, chatCookieName, parseChatCookie } from "@/lib/public-chat";
 
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -125,4 +126,19 @@ export async function claimChatsFromCookies(userId: string): Promise<number> {
     console.error("[public-chat] claim", err instanceof Error ? err.message : err);
     return 0;
   }
+}
+
+/**
+ * Who is chatting, for ownership: a signed-in couple's id, otherwise null. Vendors and admins
+ * (for example a vendor trying their own page) chat as anonymous visitors, so their chats are
+ * never linked to their account or moved into a couple's Messages.
+ */
+export async function chatViewerId(): Promise<string | null> {
+  const sb = await supabaseServer();
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+  if (!user || user.is_anonymous) return null;
+  const { data: profile } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  return profile?.role === "couple" ? user.id : null;
 }
