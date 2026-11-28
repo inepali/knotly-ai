@@ -224,3 +224,12 @@ extends the Phase 0 billing tables instead of adding a second ledger:
   prices" removes the override), `/admin` index. `src/lib/actions/pricing.ts` validates like the
   table checks and caps the largest reload at $1,000.
 - pgTAP: 060 now 150 assertions (reload case updated). Vitest: `pricing.test.ts`. Not run here.
+
+## 2026-11-28: Vendor wallet, step 10 (nightly hold release)
+- `GET /api/cron/wallet-holds` calls `release_stale_holds()` (declined, past valid-until, or
+  unopened 30 days). Refuses when `CRON_SECRET` is unset (the older cron routes would accept
+  `Bearer undefined`; see GAP_ANALYSIS S-1).
+- `vercel.json` (new, in `knotly/`): schedules **only** this route, daily 08:17 UTC. The
+  escalations and photo-retention routes are still unscheduled, as before.
+- The planned ledger reconciliation isn't needed: the balance is the ledger sum (no cached total).
+- Vitest: `api/cron/wallet-holds/route.test.ts`. Not run here.
