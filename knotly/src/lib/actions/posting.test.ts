@@ -225,6 +225,36 @@ describe("advanceWaves", () => {
   });
 });
 
+describe("advanceWaves and the lead fee", () => {
+  it("skips a queued vendor who can't cover the fee and asks the next one", async () => {
+    const admin = mockSb(
+      {
+        couple_projects: { data: { ...project, posted_at: "x" } },
+        project_needs: { data: [need("photographer", { estimate_cap: 1 })] },
+        threads: [
+          { data: [{ ...thread("t1", "queued", 1), vendor_id: "broke" }, { ...thread("t2", "queued", 2), vendor_id: "v2" }] },
+          { data: [] }, // t1 marked skipped
+          { data: [{ id: "t2" }] }, // claim t2
+          { data: [{ ...thread("t2", "open", 2), vendor_id: "v2" }] }, // round 2: cap is full
+        ],
+        messages: { data: null },
+      },
+      { data: true }
+    );
+    // vendor "broke" can't take a lead; everyone else can
+    const rpc = admin.sb.rpc.bind(admin.sb);
+    admin.sb.rpc = ((name: string, args: { v?: string }) =>
+      name === "vendor_can_take_lead" && args?.v === "broke"
+        ? Promise.resolve({ data: false, error: null })
+        : rpc(name, args)) as typeof admin.sb.rpc;
+    h.admin = admin.sb;
+
+    expect(await advanceWaves("p1")).toEqual({ asked: 1 });
+    expect(h.agent.mock.calls.map((c) => c[0])).toEqual(["t2"]);
+    expect(admin.called("threads", "update").map((c) => c.args[0])).toContainEqual({ status: "skipped" });
+  });
+});
+
 describe("estimateProgress", () => {
   it("is empty before there's a wedding", async () => {
     const { sb } = mockSb({ couple_projects: { data: null } });

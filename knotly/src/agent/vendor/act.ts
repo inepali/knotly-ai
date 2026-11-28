@@ -20,13 +20,19 @@ const coupleOf = async (threadId: string) =>
       .single()
   ).data as unknown as { couple_projects: { couple_id: string } };
 
-// Send the decision for real
+/** Postgres error code when the vendor's wallet can't hold the $1 lead fee (quotes trigger). */
+export const INSUFFICIENT_BALANCE = "KN402";
+
+export type ActOutcome = "sent" | "insufficient_balance";
+
+// Send the decision for real. An estimate the wallet can't cover isn't sent at all
+// (no estimate, no message): the caller escalates or tells the vendor to reload.
 export async function act(
   d: Decision,
   ctx: VendorCtx,
   priced: Priced | null,
   message = d.message
-) {
+): Promise<ActOutcome> {
   let body = message;
   const payload: Record<string, unknown> = { responseType: d.responseType };
 
@@ -36,7 +42,7 @@ export async function act(
     )
       .toISOString()
       .slice(0, 10);
-    const { data: q } = await db
+    const { data: q, error } = await db
       .from("quotes")
       .insert({
         thread_id: ctx.threadId,
@@ -47,7 +53,9 @@ export async function act(
       })
       .select("id")
       .single();
-    payload.quoteId = q!.id;
+    if (error?.code === INSUFFICIENT_BALANCE) return "insufficient_balance";
+    if (error || !q) throw new Error(`estimate not saved: ${error?.message ?? "no row"}`);
+    payload.quoteId = q.id;
     // The couple sees the price when they open the estimate (that's when credits are charged, Lesson 17)
     body +=
       `\n\nI've prepared an estimate for you, valid until ${validUntil}. Tap "Review estimate" to see it. ` +
@@ -87,7 +95,7 @@ export async function act(
       .select("origin")
       .eq("id", ctx.threadId)
       .single();
-    if (t?.origin === "post") return;
+    if (t?.origin === "post") return "sent";
   }
 
   await db
@@ -106,6 +114,7 @@ export async function act(
     `${ctx.vendor.business_name} replied to your inquiry.`,
     `${APP}/client/dashboard/vendors`
   );
+  return "sent";
 }
 
 // Hand it to the human vendor

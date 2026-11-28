@@ -136,3 +136,24 @@ extends the Phase 0 billing tables instead of adding a second ledger:
 - pgTAP: `test_wallet_signup_credit_email` added to 060. Vitest: `signup-credit.test.ts`,
   new `api/auth/verify/route.test.ts`, two cases in `vendor-profile.test.ts`. Not run here
   (no `node_modules`); run `pnpm test` and `bash supabase/tests/run.sh`.
+
+## 2026-11-28: Vendor wallet, step 3 (holds on send, unfunded vendors skipped)
+- `20261128140000_estimate_holds.sql`:
+  - `vendor_can_take_lead(v)`: Pay as you go needs `wallet_available >= lead fee`; Basic/Pro true.
+  - `quotes` AFTER INSERT trigger places the hold; when it can't, the insert fails with
+    **SQLSTATE `KN402`** (`act.ts` → `INSUFFICIENT_BALANCE`). Every way of creating an estimate
+    is covered, including tests and seeds: **fund a Pay-as-you-go vendor before inserting quotes**
+    (`_setup.sql` now tops up V1 first).
+  - `quotes` status → `declined` / `expired` releases the hold (trigger).
+  - `match_project_vendors()` also requires `vendor_can_take_lead()`.
+- App:
+  - The agent's funds check moved from the frozen `vendor_credit_balance()` to
+    `vendor_can_take_lead()` (same holding reply + vendor nudge).
+  - `act()` returns `"sent" | "insufficient_balance"`. When the balance dropped since that check, the
+    responder escalates with reason `insufficient_balance`; approving it without funds returns
+    402 and reopens the escalation; `EscalationCard` shows the message.
+  - `advanceWaves()` marks queued threads of vendors who can't pay `skipped` (new thread
+    status) and asks the next in line.
+- `vendor_credit_balance()` / `lead_credit_ledger` are no longer read by the app.
+- pgTAP: 060 now 100 assertions (auto-hold, KN402, status release). Vitest: wave skip case in
+  `posting.test.ts`. Not run here; run `pnpm test` and `bash supabase/tests/run.sh`.

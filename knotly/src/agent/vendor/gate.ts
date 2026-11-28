@@ -28,6 +28,8 @@ export const REASONS: Record<string, string> = {
   always_review: 'This matches one of your "always review" rules',
   sensitive:
     "The message looks sensitive (refund, complaint, legal, or cancellation)",
+  insufficient_balance:
+    "Your balance can't cover the $1 lead fee. Reload, then approve to send the estimate",
 };
 
 export function gate(d: Decision, ctx: VendorCtx, priced: Priced | null) {

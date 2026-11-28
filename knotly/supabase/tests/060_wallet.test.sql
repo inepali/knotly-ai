@@ -27,9 +27,10 @@ begin
 end $$;
 
 create function tap_tests.test_wallet_holds() returns setof text language plpgsql as $$
+declare st text;
 begin
-  perform tap_tests.wallet_fixtures();
-  return next is(place_estimate_hold(tap_tests.id('81')), true, 'hold placed with $10 available');
+  -- Step 3: quote 81 (from _setup.sql) placed its hold when it was inserted.
+  return next is((select status from wallet_holds where quote_id = tap_tests.id('81')), 'held', 'sending an estimate holds the fee');
   return next is(place_estimate_hold(tap_tests.id('81')), true, '... idempotent');
   return next is((select count(*)::int from wallet_holds where quote_id = tap_tests.id('81')), 1, 'one hold row');
   return next is(wallet_held(tap_tests.id('c1')), 100, '$1 on hold');
@@ -37,9 +38,14 @@ begin
   return next is(wallet_balance(tap_tests.id('c1')), 1000, 'balance unchanged by a hold');
   return next is((select lead_fee_cents from quotes where id = tap_tests.id('81')), 100, 'fee copied onto the estimate');
 
-  -- Not enough available: no hold.
+  -- Not enough available: the estimate isn't created (KN402) and nothing is held.
   insert into wallet_transactions (vendor_id, kind, amount_cents, note) values (tap_tests.id('c1'), 'adjust', -850, 'test');
-  return next is(place_estimate_hold(tap_tests.id('82')), false, 'refused when available < fee');
+  return next is(vendor_can_take_lead(tap_tests.id('c1')), false, 'V1 can''t take a lead with $0.50 available');
+  st := tap_tests.sqlstate_of(format(
+    'insert into quotes (id, thread_id, line_items, total, valid_until) values (%L, %L, ''[]'', 1, ''2027-01-01'')',
+    tap_tests.id('82'), tap_tests.id('71')));
+  return next is(st, 'KN402', 'estimate refused when available < fee');
+  return next is((select count(*)::int from quotes where id = tap_tests.id('82')), 0, '... not created');
   return next is((select count(*)::int from wallet_holds where quote_id = tap_tests.id('82')), 0, '... and nothing held');
 
   -- Release gives it back, once.
@@ -47,12 +53,25 @@ begin
   return next is(release_estimate_hold(tap_tests.id('81'), 'withdrawn'), false, '... only once');
   return next is(wallet_held(tap_tests.id('c1')), 0, 'nothing on hold after release');
 
-  -- Basic vendors never need a hold.
+  -- Basic vendors never need a hold, even with an empty wallet.
+  return next is(vendor_can_take_lead(tap_tests.id('c2')), true, 'Basic vendor can always take a lead');
   insert into threads (id, project_id, vendor_id) values (tap_tests.id('72'), tap_tests.id('b1'), tap_tests.id('c2'));
   insert into quotes (id, thread_id, line_items, total, valid_until) values
     (tap_tests.id('83'), tap_tests.id('72'), '[]', 1600, '2027-01-01');
-  return next is(place_estimate_hold(tap_tests.id('83')), true, 'Basic vendor: no hold needed');
-  return next is((select count(*)::int from wallet_holds where quote_id = tap_tests.id('83')), 0, '... none written');
+  return next is((select count(*)::int from wallet_holds where quote_id = tap_tests.id('83')), 0, 'Basic vendor: no hold written');
+  return next is(vendor_can_take_lead(tap_tests.id('a1')), false, 'not a vendor: no');
+end $$;
+
+create function tap_tests.test_wallet_status_releases_hold() returns setof text language plpgsql as $$
+begin
+  perform tap_tests.wallet_fixtures();
+  return next is(wallet_held(tap_tests.id('c1')), 200, 'two estimates held');
+  update quotes set status = 'declined' where id = tap_tests.id('81');
+  update quotes set status = 'expired' where id = tap_tests.id('82');
+  return next is((select release_reason from wallet_holds where quote_id = tap_tests.id('81')), 'declined', 'declined releases the hold');
+  return next is((select release_reason from wallet_holds where quote_id = tap_tests.id('82')), 'expired', 'expired releases the hold');
+  return next is(wallet_held(tap_tests.id('c1')), 0, 'nothing on hold');
+  return next is(wallet_balance(tap_tests.id('c1')), 1000, 'nothing charged');
 end $$;
 
 create function tap_tests.test_wallet_open_captures_hold() returns setof text language plpgsql as $$
@@ -73,6 +92,7 @@ end $$;
 create function tap_tests.test_wallet_never_negative() returns setof text language plpgsql as $$
 begin
   -- Legacy estimate (no hold) and an empty wallet: the open is free, the balance stays at 0.
+  delete from wallet_holds where quote_id = tap_tests.id('81');   -- as if sent before step 3
   insert into wallet_transactions (vendor_id, kind, amount_cents, note) values (tap_tests.id('c1'), 'adjust', -1000, 'test');
   perform tap_tests.login(tap_tests.id('a1'));
   perform view_quote(tap_tests.id('81'));
@@ -87,9 +107,9 @@ begin
   perform place_estimate_hold(tap_tests.id('81'));
   perform place_estimate_hold(tap_tests.id('82'));
   update wallet_holds set created_at = now() - interval '31 days' where quote_id = tap_tests.id('81');
-  update quotes set status = 'declined' where id = tap_tests.id('82');
-  return next is(release_stale_holds(), 2, 'old and declined holds released');
-  return next is((select release_reason from wallet_holds where quote_id = tap_tests.id('82')), 'declined', 'reason kept');
+  update quotes set valid_until = current_date - 1 where id = tap_tests.id('82');  -- past its date
+  return next is(release_stale_holds(), 2, '30-day-old and past-date holds released');
+  return next is((select release_reason from wallet_holds where quote_id = tap_tests.id('82')), 'expired', 'reason kept');
   return next is(wallet_held(tap_tests.id('c1')), 0, 'nothing on hold');
 end $$;
 
